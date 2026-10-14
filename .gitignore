@@ -1,0 +1,31 @@
+/.gradle/
+/.kotlin/
+/.idea/
+build/
+.cxx/
+.externalNativeBuild/
+/captures/
+/local.properties
+*.iml
+.opencode/
+
+# Configuracion privada y claves de firma.
+.env
+.env.*
+!.env.example
+keystore.properties
+signing.properties
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+
+# Artefactos y archivos locales del sistema.
+*.apk
+*.aab
+*.apks
+*.hprof
+.DS_Store
+Thumbs.db

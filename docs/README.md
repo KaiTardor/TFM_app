@@ -1,81 +1,144 @@
-# PixDate
+# BeSharp
 
-PixDate es una aplicación Android que permite gestionar las fotos del dispositivo de forma dinámica mediante un calendario cronológico, acompañada de funcionalidades de inteligencia artificial para análisis automático, clasificación y compartición de recuerdos.
+BeSharp es una aplicación Android que trata de detectar imágenes sinteticas
+mediante evidencias. Cada evaluación agrupa los trabajos de los
+proveedores seleccionados y produce una resolución final....
 
-## Estructura del proyecto
+PD: Una señal de procedencia es evidencia sobre el origen del contenido, no una
+garantía de que lo representado sea verdadero. No detectar señales tampoco
+demuestra que una imagen sea auténtica.
 
-```
-PixDate/
-├── app/                        # Código fuente de la aplicación
-│   └── src/main/java/.../
-│       ├── data/
-│       │   ├── local/          # Room DB: entidades, DAOs, base de datos
-│       │   ├── remote/         # Servicio de IA (Google Gemini)
-│       │   └── repository/     # Repositorios de datos
-│       ├── ui/
-│       │   ├── screens/
-│       │   │   ├── gallery/    # Galería principal + ViewModel
-│       │   │   ├── detail/     # Detalle de foto
-│       │   │   ├── folders/    # Carpetas y detalle de carpeta
-│       │   │   └── legal/      # Pantalla de información legal
-│       │   └── theme/          # Tema visual de la app
-│       ├── notifications/      # Notificaciones locales de análisis IA
-│       └── MainActivity.kt
-└── docs/                       # Documentación del proyecto
-```
+## Funciones actuales
 
-## Funcionalidades principales
+- Galería local con vistas de calendario y lista, y filtros de imágenes analizadas.
+- Selección de imágenes por lote y captura mediante una cámara externa.
+- Elección de proveedores configurados.
+- Resultados y señales almacenados en Room.
+- Credenciales cifradas con Android Keystore y consentimiento remoto revocable.
+- Recuperación de capturas completadas y limpieza de cancelaciones explícitas.
 
-- **Visualización de fotos mediante calendario:**
-  La aplicación organiza las fotografías del dispositivo dentro de un calendario interactivo. Cada día muestra las imágenes asociadas a esa fecha, con indicadores visuales y navegación intuitiva entre recuerdos.
+## Proveedores y límites
 
-- **Análisis automático con IA (Google Gemini):**
-  Las fotos se envían a la API de Google Gemini (`gemini-2.5-flash`) para generar automáticamente una descripción en inglés, una categoría principal y hasta 5 etiquetas descriptivas. El análisis se ejecuta en segundo plano y notifica al usuario al finalizar.
+| Proveedor | Entrada | Límite del original | Interpretación |
+|---|---|---|---|
+| OpenAI Content Provenance | Original PNG, JPEG o WebP | 50 MiB | Señales `REMOTE_VERIFIED` |
+| Gemini | Original PNG, JPEG o WebP codificado en Base64 | 14 MiB | Señales `PROVIDER_REPORTED` |
+| API personalizada | Copia JPEG de hasta 1600 px, sin EXIF, en Base64 | No recibe el original | Estimación visual o señales reportadas |
 
-- **Gestión y organización en carpetas:**
-  Las carpetas se crean automáticamente a partir de las categorías asignadas por la IA (p. ej. `TRAVEL`, `ANIMALS`, `NIGHT`), permitiendo organizar el contenido sin intervención manual. El usuario también puede crear, renombrar y eliminar carpetas.
+### OpenAI
 
-- **Cámara integrada:**
-  La aplicación permite capturar nuevas fotografías directamente desde la galería, delegando en la cámara nativa del sistema y registrando la nueva foto en la base de datos local.
+BeSharp envía el original a `POST /v1/content_provenance_checks`. Se necesita
+una API key de OpenAI Platform y acceso de la organización al endpoint.
 
-- **Compartir recuerdos:**
-  Las fotos y su descripción generada por IA se pueden compartir fácilmente con otras aplicaciones o redes sociales, evitando que el usuario tenga que escribir un texto manualmente.
+Para imágenes, el servicio devuelve comprobaciones independientes de C2PA y
+SynthID. Su cobertura se limita a señales compatibles con las herramientas de
+OpenAI: no es un detector universal de imágenes generadas por otras empresas.
 
-- **Notificaciones locales:**
-  Cuando el análisis de una foto finaliza (con éxito o con error) mientras el usuario está fuera de la app, se muestra una notificación del sistema que abre directamente el detalle de esa foto.
+Referencia: [documentación de Content Provenance](https://developers.openai.com/api/docs/guides/content-provenance).
 
-## Tecnologías utilizadas
+### Gemini
 
-| Categoría | Tecnología |
+Por gemini api....
+
+### API personalizada
+
+En realización....
+
+## Resolución y conservación
+
+El motor aplica una política versionada con cinco resoluciones:
+
+- `AI_GENERATED_OR_EDITED`: evidencia confirmatoria de generación o edición con IA.
+- `POSSIBLY_SYNTHETIC`: señal reportada o estimación fuerte sin confirmación.
+- `VERIFIED_CAPTURE`: credencial de captura confiable y verificada, sin conflicto.
+- `NO_SUFFICIENT_EVIDENCE`: ausencia de indicios suficientes; no prueba autenticidad.
+- `INCONCLUSIVE`: resultados insuficientes, fallos o ausencia de evidencia utilizable.
+
+El objetivo es conservar una sola evaluación completada por imagen. Si existen
+dos resultados, ambos permanecen hasta que el usuario elige cuál conservar.
+Los errores parciales no ocultan evidencia válida de otros proveedores.
+
+## Privacidad y archivos
+
+- Cada usuario configura sus claves; no hay una clave compartida en la aplicación.
+- Los originales de procedencia no se comprimen ni convierten antes del envío.
+- Las copias privadas de análisis se eliminan al terminar y se limpian restos antiguos.
+- OpenAI Content Provenance no es elegible para Zero Data Retention.
+- Cada servicio externo aplica sus propias condiciones, conservación y cuotas.
+- BeSharp no utiliza imágenes ni resultados para entrenamiento o telemetría.
+- Room, credenciales y fotos privadas se excluyen del backup de Android.
+- Revocar el consentimiento evita nuevos envíos autorizados y solicita cancelar
+  trabajos activos; no puede retirar un archivo ya recibido por un proveedor.
+
+Las capturas privadas usan nombres únicos y marcadores persistentes `.pending`,
+`.ready` y `.cancelled`. Se recuperan las completadas cuyo registro quedó
+interrumpido y se borran solo cancelaciones explícitas. Las pendientes y los
+archivos antiguos sin marcador se conservan por seguridad.
+
+En Analisis se puede recuperar o descartar una captura pendiente tras confirmar
+que la camara externa esta cerrada. Si falla el registro se conserva la foto y
+se ofrece reintento, incluso sin permiso para consultar MediaStore.
+
+## Arquitectura
+
+| Responsabilidad | Implementación |
 |---|---|
-| Entorno de desarrollo | Android Studio |
-| Lenguaje | Kotlin |
-| UI | Jetpack Compose + Material 3 |
-| Base de datos local | Room (con KSP) |
-| Visualización de imágenes | MediaStore + Coil |
-| API de inteligencia artificial | Google Gemini API (`gemini-2.5-flash`) |
-| Comunicación HTTP | OkHttp 4 + Gson |
-| Notificaciones | NotificationCompat (AndroidX) |
-| Control de versiones | Git + GitHub |
+| Interfaz y navegación | Jetpack Compose, Material 3 y Navigation Compose tipado |
+| Estado de pantalla | ViewModels, StateFlow y observación con ciclo de vida |
+| Coordinación de trabajos | Casos de uso en `application/analysis` |
+| Resolución | Dominio independiente de Android, Room y HTTP |
+| Datos locales | Repositorios y Room |
+| Segundo plano | WorkManager |
+| Red | OkHttp y Gson |
+| Credenciales | Android Keystore y AES/GCM |
+| Dependencias | `AppContainer` compartido por UI y Worker, sin Hilt |
 
-## Configuración de la API Key
+Galería y Ajustes comparten la lectura de permisos de fotos. Los cambios de
+alcance invalidan la sincronización anterior. Las respuestas de catálogo y
+validación se aplican solo si sigue vigente su versión de configuración.
 
-El token de Gemini se gestiona de forma segura a través de `local.properties` y nunca se sube al repositorio. Para configurarlo:
+El consentimiento muestra una instantánea coherente de nombres, destinos y
+tipos de entrada, y confirma que siga vigente antes de autorizar. Las escrituras
+de consentimiento y las operaciones de captura se realizan fuera de Main.
+La recarga de Galería reintenta registrar capturas completadas, sin borrar las
+pendientes. La reconciliación no vuelve a encolar trabajo activo o finalizado.
+Si WorkManager ya no conserva el registro, se cancela el trabajo local sin
+reenviar una peticion ambigua. Un Worker restaurado en `RUNNING` tampoco reenvia;
+solo los reintentos explicitamente devueltos a `QUEUED` pueden hacerlo.
 
-1. Obtén tu API Key en [Google AI Studio](https://aistudio.google.com/app/apikey).
-2. Añade la siguiente línea a tu archivo `local.properties` (en la raíz del proyecto):
-   ```
-   GEMINI_API_KEY=tu_clave_aqui
-   ```
-3. La clave se inyecta en tiempo de compilación como `BuildConfig.GEMINI_API_KEY`.
+## Pruebas esenciales
+
+Se conservan 21 archivos JVM y 3 instrumentales centrados en resolucion de
+evidencias, contratos HTTP, consentimiento, concurrencia, recuperacion de archivos
+y persistencia. Se han retirado 18 archivos de pruebas de presentacion sencilla,
+preferencias de apariencia y comprobaciones redundantes del esquema.
+
+Las pruebas manuales en dispositivo han sido realizadas por el autor. No se
+duplica toda esa cobertura con pruebas de componentes visuales. Se mantienen
+pruebas de fallos concretos que una comprobacion manual normal no reproduce:
+escrituras parciales, callbacks tardios, cancelacion y respuestas remotas invalidas.
+
+- JVM: `gradlew.bat testDebugUnitTest`.
+- Compilacion: `gradlew.bat assembleDebug assembleDebugAndroidTest lintDebug`.
+- Instrumentales esenciales, cuando se quiera ejecutar los casos con dobles:
+  `gradlew.bat connectedDebugAndroidTest`.
+
+StrictMode registra acceso a disco en Main solo en debug; no afecta a release.
+No se ha medido aun la duracion del arranque en frio.
 
 ## Requisitos
 
-- Android mínimo: API 24 (Android 7.0)
-- Android objetivo: API 34 (Android 14)
-- Compilado con SDK 35
+- Android mínimo: API 24.
+- Android objetivo: API 34.
+- SDK de compilación: 35.
+- Entorno de compilación utilizado: JDK 17 y Android SDK Platform 35.
+- Herramientas: Gradle 8.11.1, Android Gradle Plugin 8.9.2 y Navigation 2.9.0.
 
-## Documentación adicional
 
-- [`docs/estructura_datos.md`](estructura_datos.md) — Esquema de la base de datos local (tablas, campos y relaciones).
-- [`docs/navegacion.md`](navegacion.md) — Arquitectura de navegación y flujos de usuario entre pantallas.
+## Documentación
+
+- [Estructura de datos](estructura_datos.md): persistencia, estados y archivos.
+- [Navegación](navegacion.md): destinos y flujos de usuario.
+- [Contrato personalizado](custom_api_contract.md): integración de detectores externos.
+- [Plan de implementación](implementation_plan.md): revisión de propuestas,
+  decisiones y estado de los cambios de la última auditoría.

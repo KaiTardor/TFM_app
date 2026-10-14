@@ -1,3 +1,209 @@
 <resources>
-    <string name="app_name">PixDate</string>
+    <string name="app_name">BeSharp</string>
+    <string name="nav_gallery">Galería</string>
+    <string name="nav_analyze">Analizar</string>
+    <string name="nav_settings">Ajustes</string>
+    <string name="nav_new_analysis">Nuevo análisis</string>
+    <string name="action_back">Volver</string>
+    <string name="action_open_filters">Abrir filtros</string>
+    <string name="action_change_view">Cambiar vista</string>
+    <string name="action_add">Añadir</string>
+    <string name="action_manage">Gestionar</string>
+    <string name="action_grant_access">Conceder acceso</string>
+    <string name="action_open_settings">Abrir ajustes</string>
+    <string name="state_expanded">Expandido</string>
+    <string name="state_collapsed">Contraído</string>
+
+    <!-- Gallery -->
+    <string name="gallery_filter_all">Todas</string>
+    <string name="gallery_filter_unanalyzed">Sin Analizar</string>
+    <string name="gallery_filter_analyzed">Analizadas</string>
+    <string name="gallery_partial_access">Acceso parcial: solo se muestran las fotos seleccionadas.</string>
+    <string name="gallery_select_images">Selecciona imágenes (%1$d/%2$d)</string>
+    <string name="gallery_loading_title">CARGANDO GALERÍA</string>
+    <string name="gallery_loading_message">Buscando imágenes disponibles.</string>
+    <string name="gallery_permission_title">ACCESO A FOTOS NECESARIO</string>
+    <string name="gallery_permission_message">Permite el acceso para mostrar tu galería local.</string>
+    <string name="gallery_error_title">NO SE PUDO CARGAR</string>
+    <string name="gallery_no_images">[ SIN IMÁGENES ]</string>
+    <string name="gallery_select_day">SELECCIONA UN DÍA</string>
+    <string name="gallery_pending_analyses">En curso: %1$d</string>
+    <string name="gallery_processing">Procesando en segundo plano</string>
+    <string name="gallery_analysis_completed">Análisis completado: %1$s</string>
+    <string name="gallery_view_result">VER RESULTADO</string>
+    <string name="result_replace_title">CONSERVAR RESULTADO</string>
+    <string name="result_replace_message">Hay un resultado anterior y uno nuevo para %1$s. Elige cuál conservar.</string>
+    <string name="result_keep_previous">CONSERVAR ANTERIOR</string>
+    <string name="result_keep_new">CONSERVAR NUEVO</string>
+    <string name="result_previous_label">Anterior: %1$s</string>
+    <string name="result_new_label">Nuevo: %1$s</string>
+    <string name="gallery_no_photos_on_day">NO HAY FOTOS EL %1$d</string>
+    <string name="action_prev_month">Mes anterior</string>
+    <string name="action_next_month">Mes siguiente</string>
+
+    <!-- Analysis Preparation -->
+    <string name="analysis_prep_step1">1. SELECCIONA IMÁGENES</string>
+    <string name="analysis_prep_step2">2. ELIGE PROVEEDORES</string>
+    <string name="analysis_selected_images">Selección: %1$d/%2$d</string>
+    <string name="analysis_cancel">CANCELAR ANÁLISIS</string>
+    <string name="analysis_running">ANALIZANDO…</string>
+
+    <!-- Detail -->
+    <string name="detail_credentials">PROCEDENCIA Y CREDENCIALES</string>
+    <string name="detail_no_history">Esta imagen todavía no tiene evaluaciones guardadas.</string>
+    <string name="detail_analyze_again">ANALIZAR DE NUEVO</string>
+    <string name="detail_technical_info">INFORMACIÓN TÉCNICA</string>
+    <string name="detail_conflicting_signals">Se detectaron %1$d señales en conflicto.</string>
+
+    <!-- Errors -->
+    <string name="action_retry">Reintentar</string>
+    <string name="action_cancel">Cancelar</string>
+    <string name="action_revoke">REVOCAR</string>
+    <string name="action_save">GUARDAR</string>
+    <string name="action_validate">VALIDAR</string>
+    <string name="action_remove">ELIMINAR</string>
+    <string name="privacy_title">DATOS Y PRIVACIDAD</string>
+    <string name="privacy_policy_title">POLÍTICA DE PRIVACIDAD</string>
+    <string name="privacy_revoke_consent">REVOCAR CONSENTIMIENTO</string>
+    <string name="privacy_revoke_message">Se cancelarán los análisis remotos pendientes y se volverá a pedir permiso antes de otro envío.</string>
+    <string name="privacy_revoke_failed">No se pudo completar la revocación. Inténtalo de nuevo.</string>
+
+    <!-- Shared UI -->
+    <string name="filter_active">Filtro activo: %1$s</string>
+
+    <!-- Legal -->
+    <string name="privacy_remote_consent_title">CONSENTIMIENTO DE ANÁLISIS REMOTO</string>
+    <string name="privacy_remote_consent_granted">Estado: guardado. BeSharp volverá a solicitar consentimiento si cambia el proveedor, modelo o tipo de archivo enviado.</string>
+    <string name="privacy_remote_consent_denied">Estado: no concedido. BeSharp solicitará permiso antes del próximo análisis con proveedores externos.</string>
+    <string name="privacy_collection_title">1. RECOPILACIÓN DE DATOS</string>
+    <string name="privacy_collection_body">BeSharp accede a los archivos multimedia almacenados en el dispositivo del usuario con el único propósito de mostrar las imágenes y analizar su posible origen sintético cuando el usuario lo solicita. La aplicación no utiliza imágenes ni resultados para entrenamiento o telemetría.</string>
+    <string name="privacy_permissions_title">2. CONCESIÓN DE PERMISOS</string>
+    <string name="privacy_permissions_body">La aplicación solicita los siguientes permisos de forma explicita para funcionar correctamente:\n• Fotos: para mostrar la galería local cuando se concede acceso completo o parcial.\n• Notificaciones: para informar de la finalización de trabajos en segundo plano; este permiso es opcional y se activa desde Ajustes.\n\n</string>
+    <string name="privacy_local_storage_title">3. ALMACENAMIENTO LOCAL</string>
+    <string name="privacy_local_storage_body">BeSharp utiliza una base de datos local (Room) en el dispositivo del usuario para almacenar referencias de las fotos, trabajos y resultados de autenticidad por modelo. Los archivos multimedia originales permanecen inalterados en el sistema de archivos del sistema operativo, prohibiéndose expresamente a la aplicación la modificación, supresión o duplicación no autorizada de los mismos.</string>
+    <string name="privacy_external_processing_title">4. PROCESAMIENTO EXTERNO MEDIANTE IA</string>
+    <string name="privacy_external_processing_body">Antes del primer análisis remoto BeSharp solicita consentimiento explícito e identifica los proveedores seleccionados. Gemini y OpenAI Content Provenance reciben temporalmente el archivo original para conservar C2PA, SynthID y metadatos. La API personalizada recibe una copia JPEG reducida y sin EXIF. OpenAI Content Provenance no es elegible para Zero Data Retention. Cada servicio aplica sus propias condiciones, políticas de conservación y cuotas. Los resultados se almacenan exclusivamente en Room dentro del dispositivo.</string>
+    <string name="privacy_confidentiality_title">5. CONFIDENCIALIDAD Y CESIÓN A TERCEROS</string>
+    <string name="privacy_confidentiality_body">Sin perjuicio de la transmisión técnica estipulada en la Cláusula 4, BeSharp se compromete expresamente a no ceder,comercializar, alquilar ni transferir a título gratuito u oneroso la información personal o los archivos del usuario a terceras partes bajo ninguna circunstancia. El software subyacente opera primariamente en un entorno local y cerrado para el usuario.</string>
+    <string name="privacy_user_rights_title">6. DERECHOS DEL USUARIO</string>
+    <string name="privacy_user_rights_body">El usuario puede:\n• Elegir qué resultado conservar cuando se repite una evaluación, o borrar los datos de la aplicación desde Android.\n• Revocar el consentimiento remoto. Tras guardarlo, BeSharp solicita cancelar los trabajos activos; no puede retirar archivos ya recibidos por un proveedor.\n• Cambiar o revocar permisos desde los ajustes del sistema.\n• Desinstalar la aplicación para eliminar sus datos locales.</string>
+    <string name="privacy_terms_title">7. TÉRMINOS DE USO</string>
+    <string name="privacy_terms_body">La utilización de BeSharp implica la aceptación expresa e inequívoca de las siguientes condiciones limitativas:\n• El software y sus servicios asociados se licencian bajo la premisa de &quot;tal cual&quot; (&quot;as is&quot;), declinando cualquier garantía implícita o explícita de idoneidad, continuidad o infalibilidad técnica.\n• El desarrollador se exime de toda responsabilidad civil, penal o administrativa derivada de la pérdida incidental, alteración o corrupción de datos.\n• La generación, selección y subida de contenido es de la exclusiva responsabilidad del Usuario.\n• Los resultados de autenticidad generados por los modelos son estimaciones orientativas, no prueban que una imagen sea real o falsa y pueden contener falsos positivos, falsos negativos u omisiones.</string>
+    <string name="privacy_contact_title">8. CONTACTO</string>
+    <string name="privacy_contact_body">Para el ejercicio de sus derechos, la presentación de reclamaciones o cualquier consulta referente a las presentes condiciones de uso y política de privacidad, el usuario podrá dirigirse al equipo responsable de BeSharp mediante @Adriu. Toda comunicación será procesada y respondida con la debida diligencia legal.</string>
+    <string name="privacy_last_updated">Última actualización: Septiembre 2026</string>
+
+    <!-- Settings -->
+    <string name="settings_providers">PROVEEDORES</string>
+    <string name="settings_personalization">PERSONALIZACIÓN</string>
+    <string name="settings_notifications">NOTIFICACIONES</string>
+    <string name="settings_app_permissions">PERMISOS</string>
+    <string name="settings_about">ACERCA DE BESHARP</string>
+    <string name="settings_theme">TEMA</string>
+    <string name="settings_theme_system">Seguir el sistema</string>
+    <string name="settings_theme_light">Claro</string>
+    <string name="settings_theme_dark">Oscuro</string>
+    <string name="settings_accessibility">ACCESIBILIDAD</string>
+    <string name="settings_high_legibility_font">Usar tipografía del sistema</string>
+    <string name="settings_result_notifications">Notificaciones de resultados</string>
+    <string name="settings_completed_notifications">Análisis completados</string>
+    <string name="settings_failed_notifications">Análisis con error</string>
+    <string name="settings_notification_permission_disabled">El permiso de notificaciones está desactivado en Android.</string>
+    <string name="settings_action">AJUSTES</string>
+    <string name="settings_open_notification_settings">ABRIR AJUSTES DE NOTIFICACIONES</string>
+    <string name="settings_open_app_settings">ABRIR AJUSTES DE LA APLICACIÓN</string>
+    <string name="settings_permission_photos">Fotos</string>
+    <string name="settings_permission_notifications">Notificaciones</string>
+    <string name="settings_permission_granted">Concedido</string>
+    <string name="settings_permission_partial">Acceso parcial</string>
+    <string name="settings_permission_denied">No concedido</string>
+    <string name="settings_version">Versión 1.0</string>
+    <string name="settings_privacy_description">Privacidad, consentimiento remoto y condiciones de uso</string>
+    <string name="settings_analysis_info">CÓMO FUNCIONA BESHARP</string>
+    <string name="settings_analysis_info_description">Proveedores, modelos, privacidad y significado de los resultados</string>
+    <string name="info_credentials_title">CREDENCIALES Y MODELOS</string>
+    <string name="info_credentials_body">Las API keys se cifran en este dispositivo. El modelo de Gemini se puede cambiar sin sustituir la clave. OpenAI Content Provenance no requiere seleccionar un modelo.</string>
+    <string name="info_processing_title">QUÉ SE ENVÍA</string>
+    <string name="info_processing_body">Gemini y OpenAI Content Provenance reciben temporalmente el archivo original para conservar señales de procedencia. La API personalizada usa una copia JPEG reducida y sin EXIF.</string>
+    <string name="info_results_title">CÓMO INTERPRETAR EL RESULTADO</string>
+    <string name="info_results_body">Gemini reporta lo que indican sus herramientas disponibles, pero no equivale a una verificación independiente. OpenAI Content Provenance se trata como verificación remota. No detectar señales nunca demuestra autenticidad.</string>
+    <string name="info_models_title">MODELOS</string>
+    <string name="info_models_body">BeSharp guarda el modelo de Gemini como parte de cada trabajo. Si Gemini retira un modelo, configura otro compatible con entrada de imagen y valida la conexión. OpenAI usa la capacidad fija Content Provenance.</string>
+    <string name="providers_custom_api">API PERSONALIZADA</string>
+    <string name="providers_not_configured">SIN CONFIGURAR</string>
+    <string name="providers_configured">CONFIGURADA</string>
+    <string name="providers_custom_api_description">Endpoint compatible con el contrato BeSharp 1.0.</string>
+    <string name="providers_name">Nombre</string>
+    <string name="providers_endpoint">Endpoint HTTPS</string>
+    <string name="providers_endpoint_hint">https://api.ejemplo.com/analyze</string>
+    <string name="providers_model">Modelo</string>
+    <string name="providers_load_models">CARGAR MODELOS</string>
+    <string name="providers_loading_models">CARGANDO MODELOS…</string>
+    <string name="providers_new_optional_token">Nuevo token opcional</string>
+    <string name="providers_optional_token">Token opcional</string>
+    <string name="providers_hide_token">Ocultar token</string>
+    <string name="providers_show_token">Mostrar token</string>
+    <string name="providers_delete_custom_api">Eliminar API personalizada</string>
+    <string name="providers_custom_api_saved">API personalizada guardada</string>
+    <string name="providers_delete_custom_api_title">ELIMINAR API PERSONALIZADA</string>
+    <string name="providers_delete_custom_api_message">Se eliminarán la configuración y su token de este dispositivo.</string>
+    <string name="providers_new_api_key">Nueva API key</string>
+    <string name="providers_api_key">API key</string>
+    <string name="providers_hide_key">Ocultar clave</string>
+    <string name="providers_show_key">Mostrar clave</string>
+    <string name="providers_open_openai_verifier">ABRIR VERIFICADOR OFICIAL DE OPENAI</string>
+    <string name="providers_delete_key">Eliminar clave</string>
+    <string name="providers_delete_credential_title">ELIMINAR CREDENCIAL</string>
+    <string name="providers_delete_credential_message">Se eliminará la API key de %1$s de este dispositivo.</string>
+
+    <!-- Analysis -->
+    <string name="analysis_image_limit">Hasta %1$d imágenes por análisis</string>
+    <string name="analysis_selected_models">Selección: %1$d</string>
+    <string name="analysis_start">ANALIZAR</string>
+    <string name="analysis_gallery">GALERÍA</string>
+    <string name="analysis_camera">CÁMARA</string>
+    <string name="analysis_camera_failed">No se pudo completar la captura. Comprueba el almacenamiento y la aplicación de cámara.</string>
+    <string name="analysis_camera_pending">Hay una captura pendiente. Termínala o cancélala desde la cámara antes de iniciar otra.</string>
+    <string name="analysis_camera_recover">Recuperar captura</string>
+    <string name="analysis_camera_discard">Descartar captura</string>
+    <string name="analysis_camera_closed">He cerrado la cámara externa y no sigue usando esta captura</string>
+    <string name="analysis_camera_recover_confirmation">Si la cámara ya está cerrada y no entregó el resultado, puedes conservar y registrar la foto existente. No se borrará si falla el registro. Una captura vacía no se puede recuperar.</string>
+    <string name="analysis_camera_discard_confirmation">Solo descarta esta captura si la cámara ya está cerrada. Se borrará el archivo de forma permanente. Si quieres conservar la foto, elige recuperar.</string>
+    <string name="analysis_camera_registration_pending">Hay una captura con una decisión guardada. Reintenta para completar el registro o el descarte.</string>
+    <string name="analysis_camera_registration_failed">No se pudo completar el registro de la captura. La foto se conserva. Reintenta sin necesidad de dar acceso a la galería del dispositivo.</string>
+    <string name="analysis_remove_image">Quitar %1$s</string>
+    <string name="analysis_configure_in_settings"> CONFIGURA EN AJUSTES</string>
+    <string name="analysis_remote_consent_title">ENVÍO A PROVEEDORES EXTERNOS</string>
+    <string name="analysis_remote_consent_recipients">Se enviará una copia de las imágenes a: %1$s.</string>
+    <string name="analysis_remote_consent_copy">La copia se reduce a un máximo de 1600 px, se convierte a JPEG y no contiene metadatos EXIF.</string>
+    <string name="analysis_remote_consent_original">Gemini u OpenAI Content Provenance recibirán temporalmente el archivo original, incluidos sus metadatos y credenciales de contenido.</string>
+    <string name="analysis_remote_consent_storage">BeSharp guarda los resultados solo en este dispositivo. Cada proveedor aplica sus propias condiciones y política de datos.</string>
+    <string name="analysis_remote_consent_disclaimer">Los resultados son estimaciones y no demuestran que una imagen sea auténtica o sintética.</string>
+    <string name="analysis_remote_consent_save_failed">No se pudo confirmar el consentimiento. Revisa la selección e inténtalo de nuevo.</string>
+    <string name="analysis_accept_and_analyze">ACEPTAR Y ANALIZAR</string>
+    <string name="analysis_view_privacy">VER PRIVACIDAD</string>
+
+    <!-- Photo detail -->
+    <string name="detail_loading">Cargando detalle...</string>
+    <string name="detail_load_error">No se pudo cargar el detalle. Vuelve a la galería e inténtalo de nuevo.</string>
+    <string name="detail_unavailable">La imagen o evaluación ya no está disponible, o no tienes acceso a ella.</string>
+    <string name="detail_image_unavailable">No se puede abrir la imagen. Comprueba que exista y que tengas permiso para acceder a ella. Los resultados guardados siguen disponibles.</string>
+    <string name="detail_back">VOLVER</string>
+    <string name="detail_share_image">Compartir imagen</string>
+    <string name="detail_signal_type_count">Tipos de señal: %1$d</string>
+    <string name="detail_mixed_outcomes">resultados mixtos</string>
+    <string name="detail_signal_checks">Comprobaciones: %1$s</string>
+    <string name="detail_no_provenance_signals">No se guardaron señales de procedencia. Esto no demuestra autenticidad.</string>
+    <string name="detail_policy">Politica %1$s</string>
+    <string name="detail_policy_pending">pendiente</string>
+    <string name="detail_no_final_resolution">La evaluacion todavia no tiene una resolucion final.</string>
+    <string name="detail_job_signal_counts">%1$d trabajos · %2$d señales</string>
+    <string name="detail_authenticity_disclaimer">No detectar señales no demuestra que una imagen sea autentica.</string>
+    <string name="detail_assessment_running">La evaluacion sigue en curso.</string>
+    <string name="detail_analysis_failed">No se pudo completar el analisis</string>
+    <string name="detail_synthetic_estimate">%1$d%% de estimacion sintetica</string>
+    <string name="detail_evidence_duration">%1$s · %2$d ms</string>
+    <string name="detail_evidence_label">%1$s: %2$s</string>
+    <string name="detail_share_chooser">Compartir imagen</string>
+    <string name="detail_share_failed">No se pudo compartir la imagen</string>
 </resources>

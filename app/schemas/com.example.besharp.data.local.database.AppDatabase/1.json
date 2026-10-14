@@ -1,0 +1,588 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "7c2bb2fb3042bb289e5f91e34e42123a",
+    "entities": [
+      {
+        "tableName": "photos",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`photoId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `contentUri` TEXT NOT NULL, `dateTaken` INTEGER NOT NULL, `displayName` TEXT NOT NULL, `mimeType` TEXT, `isVisible` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "photoId",
+            "columnName": "photoId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "contentUri",
+            "columnName": "contentUri",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dateTaken",
+            "columnName": "dateTaken",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "displayName",
+            "columnName": "displayName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mimeType",
+            "columnName": "mimeType",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "isVisible",
+            "columnName": "isVisible",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "photoId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_photos_contentUri",
+            "unique": true,
+            "columnNames": [
+              "contentUri"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_photos_contentUri` ON `${TABLE_NAME}` (`contentUri`)"
+          }
+        ]
+      },
+      {
+        "tableName": "image_assessments",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`assessmentId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `imageUri` TEXT NOT NULL, `imageDisplayName` TEXT NOT NULL, `status` TEXT NOT NULL, `expectedJobCount` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `completedAt` INTEGER, `finalResolution` TEXT, `summary` TEXT, `resolutionReason` TEXT, `resolutionPolicyVersion` INTEGER, `decisiveSignalIdsJson` TEXT NOT NULL, `conflictingSignalIdsJson` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "assessmentId",
+            "columnName": "assessmentId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "imageUri",
+            "columnName": "imageUri",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "imageDisplayName",
+            "columnName": "imageDisplayName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expectedJobCount",
+            "columnName": "expectedJobCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "completedAt",
+            "columnName": "completedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "finalResolution",
+            "columnName": "finalResolution",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "summary",
+            "columnName": "summary",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "resolutionReason",
+            "columnName": "resolutionReason",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "resolutionPolicyVersion",
+            "columnName": "resolutionPolicyVersion",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "decisiveSignalIdsJson",
+            "columnName": "decisiveSignalIdsJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "conflictingSignalIdsJson",
+            "columnName": "conflictingSignalIdsJson",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "assessmentId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_image_assessments_imageUri",
+            "unique": false,
+            "columnNames": [
+              "imageUri"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_image_assessments_imageUri` ON `${TABLE_NAME}` (`imageUri`)"
+          },
+          {
+            "name": "index_image_assessments_status",
+            "unique": false,
+            "columnNames": [
+              "status"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_image_assessments_status` ON `${TABLE_NAME}` (`status`)"
+          },
+          {
+            "name": "index_image_assessments_createdAt",
+            "unique": false,
+            "columnNames": [
+              "createdAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_image_assessments_createdAt` ON `${TABLE_NAME}` (`createdAt`)"
+          }
+        ]
+      },
+      {
+        "tableName": "analysis_jobs",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`jobId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `assessmentId` INTEGER NOT NULL, `providerId` TEXT NOT NULL, `providerName` TEXT NOT NULL, `modelId` TEXT NOT NULL, `capability` TEXT NOT NULL DEFAULT 'VISUAL_ANALYSIS', `inputType` TEXT NOT NULL DEFAULT 'NORMALIZED_IMAGE', `executionId` TEXT NOT NULL DEFAULT '', `destinationFingerprint` TEXT NOT NULL DEFAULT '', `customEndpointUrl` TEXT, `customParametersJson` TEXT, `status` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `startedAt` INTEGER, `completedAt` INTEGER, `errorMessage` TEXT, `errorCategory` TEXT, `httpStatus` INTEGER, FOREIGN KEY(`assessmentId`) REFERENCES `image_assessments`(`assessmentId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "jobId",
+            "columnName": "jobId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "assessmentId",
+            "columnName": "assessmentId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "providerId",
+            "columnName": "providerId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "providerName",
+            "columnName": "providerName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "modelId",
+            "columnName": "modelId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "capability",
+            "columnName": "capability",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'VISUAL_ANALYSIS'"
+          },
+          {
+            "fieldPath": "inputType",
+            "columnName": "inputType",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'NORMALIZED_IMAGE'"
+          },
+          {
+            "fieldPath": "executionId",
+            "columnName": "executionId",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "destinationFingerprint",
+            "columnName": "destinationFingerprint",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "customEndpointUrl",
+            "columnName": "customEndpointUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "customParametersJson",
+            "columnName": "customParametersJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startedAt",
+            "columnName": "startedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "completedAt",
+            "columnName": "completedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "errorMessage",
+            "columnName": "errorMessage",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "errorCategory",
+            "columnName": "errorCategory",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "httpStatus",
+            "columnName": "httpStatus",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "jobId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_analysis_jobs_assessmentId",
+            "unique": false,
+            "columnNames": [
+              "assessmentId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_analysis_jobs_assessmentId` ON `${TABLE_NAME}` (`assessmentId`)"
+          },
+          {
+            "name": "index_analysis_jobs_providerId",
+            "unique": false,
+            "columnNames": [
+              "providerId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_analysis_jobs_providerId` ON `${TABLE_NAME}` (`providerId`)"
+          },
+          {
+            "name": "index_analysis_jobs_status",
+            "unique": false,
+            "columnNames": [
+              "status"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_analysis_jobs_status` ON `${TABLE_NAME}` (`status`)"
+          },
+          {
+            "name": "index_analysis_jobs_createdAt",
+            "unique": false,
+            "columnNames": [
+              "createdAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_analysis_jobs_createdAt` ON `${TABLE_NAME}` (`createdAt`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "image_assessments",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "assessmentId"
+            ],
+            "referencedColumns": [
+              "assessmentId"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "authenticity_results",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`resultId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `jobId` INTEGER NOT NULL, `verdict` TEXT NOT NULL, `syntheticProbability` INTEGER, `evidenceType` TEXT NOT NULL, `verificationLevel` TEXT NOT NULL DEFAULT 'VISUAL_ESTIMATE', `summary` TEXT NOT NULL, `indicatorsJson` TEXT NOT NULL, `analyzedAt` INTEGER NOT NULL, `durationMillis` INTEGER NOT NULL, `origin` TEXT NOT NULL, FOREIGN KEY(`jobId`) REFERENCES `analysis_jobs`(`jobId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "resultId",
+            "columnName": "resultId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "jobId",
+            "columnName": "jobId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "verdict",
+            "columnName": "verdict",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "syntheticProbability",
+            "columnName": "syntheticProbability",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "evidenceType",
+            "columnName": "evidenceType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "verificationLevel",
+            "columnName": "verificationLevel",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'VISUAL_ESTIMATE'"
+          },
+          {
+            "fieldPath": "summary",
+            "columnName": "summary",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "indicatorsJson",
+            "columnName": "indicatorsJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "analyzedAt",
+            "columnName": "analyzedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "durationMillis",
+            "columnName": "durationMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "resultId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_authenticity_results_jobId",
+            "unique": true,
+            "columnNames": [
+              "jobId"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_authenticity_results_jobId` ON `${TABLE_NAME}` (`jobId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "analysis_jobs",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "jobId"
+            ],
+            "referencedColumns": [
+              "jobId"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "evidence_signals",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`signalId` TEXT NOT NULL, `jobId` INTEGER NOT NULL, `type` TEXT NOT NULL, `outcome` TEXT NOT NULL, `verificationLevel` TEXT NOT NULL, `source` TEXT NOT NULL, `claim` TEXT NOT NULL, `issuer` TEXT, `model` TEXT, `generatedAt` INTEGER, `explanation` TEXT, `validationState` TEXT, PRIMARY KEY(`signalId`), FOREIGN KEY(`jobId`) REFERENCES `authenticity_results`(`jobId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "signalId",
+            "columnName": "signalId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "jobId",
+            "columnName": "jobId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "outcome",
+            "columnName": "outcome",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "verificationLevel",
+            "columnName": "verificationLevel",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "source",
+            "columnName": "source",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "claim",
+            "columnName": "claim",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "issuer",
+            "columnName": "issuer",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "model",
+            "columnName": "model",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "generatedAt",
+            "columnName": "generatedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "explanation",
+            "columnName": "explanation",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "validationState",
+            "columnName": "validationState",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "signalId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_evidence_signals_jobId",
+            "unique": false,
+            "columnNames": [
+              "jobId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_evidence_signals_jobId` ON `${TABLE_NAME}` (`jobId`)"
+          },
+          {
+            "name": "index_evidence_signals_type",
+            "unique": false,
+            "columnNames": [
+              "type"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_evidence_signals_type` ON `${TABLE_NAME}` (`type`)"
+          },
+          {
+            "name": "index_evidence_signals_outcome",
+            "unique": false,
+            "columnNames": [
+              "outcome"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_evidence_signals_outcome` ON `${TABLE_NAME}` (`outcome`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "authenticity_results",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "jobId"
+            ],
+            "referencedColumns": [
+              "jobId"
+            ]
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '7c2bb2fb3042bb289e5f91e34e42123a')"
+    ]
+  }
+}

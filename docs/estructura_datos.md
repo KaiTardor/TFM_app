@@ -1,181 +1,291 @@
-# Estructura de datos de PixDate
+# Estructura de datos de BeSharp
 
-## Fuente de los datos de prueba
+Room usa una linea base inicial limpia, version 1. No existen migraciones de
+PixDate porque la aplicacion todavia no se ha distribuido y no hay datos de
+usuarios que conservar. Room no almacena bytes de imagen ni credenciales.
 
-Para las pruebas iniciales del proyecto se utilizará un subconjunto de imágenes elegidas de forma aleatoria 
-junto con sus captions de referencia, que se almacenarán de forma local dentro del proyecto en la carpeta `assets/`. 
-Estas imágenes se emplearán únicamente como datos de prueba para validar la estructura de datos, la lectura de información 
-y el posterior almacenamiento en la base de datos local.
+La base se denomina `besharp_database` y exporta su esquema en `app/schemas/`.
+No se usa `fallbackToDestructiveMigration()`. Si cambia el esquema de esta
+versión no publicada, es necesario borrar los datos o reinstalar la aplicación.
 
-Del conjunto original solo se conservarán los campos necesarios para la aplicación, como el nombre del archivo y 
-una descripción textual de referencia. A partir de estos datos se añadirá información propia de la app que se 
-considere necesaria para realizar la práctica, como el estado de procesamiento, las etiquetas, la categoría principal o 
-la carpeta asociada.
+## photos
 
-## Tabla 1: photos
+Referencia una imagen detectada en MediaStore o capturada por BeSharp.
 
-### Qué representa
+| Campo | Tipo | Descripcion |
+|---|---|---|
+| `photoId` | Long | Clave primaria autogenerada |
+| `contentUri` | String | URI unica de la imagen |
+| `dateTaken` | Long | Fecha usada por calendario |
+| `displayName` | String | Nombre visible |
+| `mimeType` | String? | MIME original |
+| `isVisible` | Boolean | Visible con el permiso MediaStore actual |
+| `createdAt` | Long | Creacion del registro |
+| `updatedAt` | Long | Ultima actualizacion |
 
-Esta tabla representa cada fotografía detectada por la aplicación. No almacena la imagen en sí, sino su referencia dentro 
-del dispositivo del usuario o del conjunto de prueba, junto con metadatos básicos necesarios para la organización en calendario.
+La imagen original permanece en MediaStore o en el directorio privado de fotos
+capturadas. Con acceso parcial, las fotos no autorizadas se conservan en Room
+pero quedan ocultas hasta recuperar visibilidad; no se confunden con borrados.
 
-### Campos
+`dateTaken` usa la fecha de MediaStore con fallback a `DATE_ADDED`. Para las
+capturas privadas se utiliza la fecha de modificación del archivo, también
+cuando se recuperan después de un reinicio.
 
-* `photoId`: Long. Obligatorio. Identificador único de la fotografía.
-* `contentUri`: String. Obligatorio. Ruta o URI que referencia la imagen.
-* `dateTaken`: Long. Obligatorio. Fecha asociada a la imagen.
-* `displayName`: String. Obligatorio. Nombre del archivo de imagen.
-* `mimeType`: String. Opcional. Tipo MIME de la imagen.
-* `isProcessed`: Boolean. Obligatorio. Indica si la imagen ya ha sido procesada.
-* `folderId`: Long. Opcional. Identificador de la carpeta principal asociada.
-* `createdAt`: Long. Obligatorio. Fecha de creación del registro en la base de datos.
-* `updatedAt`: Long. Obligatorio. Fecha de última actualización del registro.
+## image_assessments
 
-### Ejemplo de registro
+Es la unidad principal del producto. Una evaluacion agrupa todos los trabajos
+solicitados para una imagen y conserva una unica resolucion final.
 
-```json
-{
-  "photoId": 1,
-  "contentUri": "file:///android_asset/sample_images/3354474353_daf9e168cf.jpg",
-  "dateTaken": 1712165400000,
-  "displayName": "3354474353_daf9e168cf.jpg",
-  "mimeType": "image/jpeg",
-  "isProcessed": true,
-  "folderId": 1,
-  "createdAt": 1712165500000,
-  "updatedAt": 1712165600000
-}
-```
+| Campo | Tipo | Descripcion |
+|---|---|---|
+| `assessmentId` | Long | Clave primaria |
+| `imageUri` | String | URI de la imagen |
+| `imageDisplayName` | String | Nombre mostrado |
+| `status` | String | `PREPARING`, `ACTIVE` o `COMPLETED` |
+| `expectedJobCount` | Int | Numero de trabajos con el que se sella el lote |
+| `createdAt` | Long | Creacion |
+| `completedAt` | Long? | Finalizacion |
+| `finalResolution` | String? | Resolucion agregada |
+| `summary` | String? | Explicacion breve |
+| `resolutionReason` | String? | Regla aplicada |
+| `resolutionPolicyVersion` | Int? | Version del motor |
+| `decisiveSignalIdsJson` | String | IDs de señales decisivas |
+| `conflictingSignalIdsJson` | String | IDs de señales contradictorias |
 
-### Relaciones
+Resoluciones posibles:
 
-* Relación 1:1 opcional con `photo_analysis`, mediante `photoId`.
-* Relación N:M con `tags`, implementada mediante la tabla intermedia `photo_tag_cross_ref`.
-* Relación N:1 con `folders`, mediante `folderId`.
+- `AI_GENERATED_OR_EDITED`.
+- `POSSIBLY_SYNTHETIC`.
+- `VERIFIED_CAPTURE`.
+- `NO_SUFFICIENT_EVIDENCE`.
+- `INCONCLUSIVE`.
 
-## Tabla 2: photo_analysis
+La evaluacion y todos sus trabajos se insertan en una transaccion con estado
+`PREPARING`. Solo pasa a `ACTIVE` cuando el numero de filas coincide con
+`expectedJobCount`. El ultimo trabajo terminal intenta cerrarla mediante
+compare-and-set y vuelve a comprobar que el lote este completo. Las evaluaciones
+listas se reconcilian al iniciar UI o Worker tras una interrupcion del proceso.
 
-### Qué representa
+Puede haber varias evaluaciones para la misma URI mientras se procesa un nuevo
+análisis o se espera la elección del usuario. La política de conservar un único
+resultado completado se aplica después de esa elección, no mediante una
+restricción única sobre `imageUri`.
 
-Esta tabla almacena la información generada tras procesar una fotografía, como la descripción automática, 
-la categoría principal o el modelo utilizado.
+## analysis_jobs
 
-### Campos
+Cada fila representa una capacidad concreta de un proveedor dentro de una
+evaluacion. Gemini y OpenAI Content Provenance crean un trabajo de procedencia
+independiente por proveedor.
 
-* `analysisId`: Long. Obligatorio. Identificador único del análisis.
-* `photoId`: Long. Obligatorio. Identificador de la fotografía analizada.
-* `description`: String. Opcional. Descripción generada o asociada a la imagen.
-* `mainCategory`: String. Opcional. Categoría principal asignada a la imagen.
-* `modelUsed`: String. Opcional. Modelo utilizado para generar la descripción.
-* `processedAt`: Long. Opcional. Fecha del procesamiento.
-* `confidence`: Float. Opcional. Valor de confianza del resultado.
-* `errorMessage`: String. Opcional. Mensaje de error si el procesamiento falla.
+| Campo | Tipo | Descripcion |
+|---|---|---|
+| `jobId` | Long | Clave primaria |
+| `assessmentId` | Long | FK a `image_assessments` |
+| `providerId` | String | Identificador estable |
+| `providerName` | String | Nombre visible |
+| `modelId` | String | Modelo o capacidad |
+| `capability` | String | Visual, procedencia o modelo local futuro |
+| `inputType` | String | `NORMALIZED_IMAGE` u `ORIGINAL_FILE` |
+| `executionId` | String | Identificador estable de ejecución; permite deduplicación en la API custom |
+| `destinationFingerprint` | String | Destino consentido |
+| `customEndpointUrl` | String? | Snapshot custom sin credenciales |
+| `customParametersJson` | String? | Parametros custom no sensibles |
+| `status` | String | Estado persistente |
+| `createdAt` | Long | Creacion |
+| `startedAt` | Long? | Inicio |
+| `completedAt` | Long? | Finalizacion |
+| `errorMessage` | String? | Mensaje normalizado |
+| `errorCategory` | String? | Categoria controlada |
+| `httpStatus` | Int? | Estado HTTP validado |
 
-### Ejemplo de registro
+Estados de trabajo: `QUEUED`, `RUNNING`, `SUCCEEDED`, `FAILED` y `CANCELLED`.
+Las transiciones se realizan con compare-and-set. Resultado y cambio a
+`SUCCEEDED` comparten una transaccion; una cancelacion previa impide insertar un
+resultado tardio.
 
-```json
-{
-  "analysisId": 1,
-  "photoId": 1,
-  "description": "Two dogs walk in the snow, the larger dog has a fish in his mouth.",
-  "mainCategory": "ANIMALS",
-  "modelUsed": "Salesforce/blip-image-captioning-base",
-  "processedAt": 1712165600000,
-  "confidence": 0.91,
-  "errorMessage": null
-}
-```
+La reconciliación distingue trabajo ausente, activo y finalizado en WorkManager.
+No encola otra vez un trabajo activo. Si el sistema ya terminó pero Room conserva
+estado activo, intenta cerrar el trabajo con un fallo de almacenamiento local,
+sin inventar una respuesta del proveedor. Si falta el registro del sistema,
+cancela el trabajo local sin reenviarlo: no distingue uno nunca programado de
+otro cuyo historial fue podado. Un Worker restaurado en `RUNNING` se cancela
+tambien; solo los reintentos devueltos explicitamente a `QUEUED` permiten reenvio.
 
-### Relaciones
+La URI y el nombre se leen desde `image_assessments`; no se duplican en cada
+trabajo. Los campos de proveedor y configuracion custom si son snapshots
+deliberados de la ejecucion solicitada.
 
-* Relación 1:1 con `photos`, implementada mediante la clave foránea `photoId`.
+Los tokens se leen del almacén cifrado al ejecutar, no se incluyen en el
+snapshot. Cambiar o eliminar una credencial cancela los trabajos asociados;
+cambiar el token custom también los cancela aunque el endpoint sea el mismo.
+El identificador de ejecución no implica por sí solo idempotencia de todos los
+servicios externos.
 
-## Tabla 3: tags
+## authenticity_results
 
-### Qué representa
+Salida normalizada 1:1 de un trabajo completado.
 
-Esta tabla almacena etiquetas reutilizables que permiten clasificar las imágenes según su contenido o contexto.
+| Campo | Tipo | Descripcion |
+|---|---|---|
+| `resultId` | Long | Clave primaria |
+| `jobId` | Long | FK unica a `analysis_jobs` |
+| `verdict` | String | Estimacion individual |
+| `syntheticProbability` | Int? | Estimacion entre 0 y 100 |
+| `evidenceType` | String | Tipo principal del resultado |
+| `verificationLevel` | String | Nivel de verificacion |
+| `summary` | String | Explicacion breve |
+| `indicatorsJson` | String | Lista de indicadores o estados de señales |
+| `analyzedAt` | Long | Fecha del analisis |
+| `durationMillis` | Long | Duracion |
+| `origin` | String | API directa o analisis local |
 
-### Campos
+Un resultado individual no es la resolucion final de la imagen.
 
-* `tagId`: Long. Obligatorio. Identificador único de la etiqueta.
-* `name`: String. Obligatorio. Nombre de la etiqueta.
-* `source`: String. Obligatorio. Indica si la etiqueta es automática o manual.
+Gemini y OpenAI Content Provenance guardan `syntheticProbability = null`.
+La API personalizada puede devolver un porcentaje visual, pero no se calcula
+una media entre proveedores. Solo resultados de capacidades visuales o del
+futuro clasificador local alimentan la rama de estimaciones del motor.
 
-### Ejemplo de registro
+## evidence_signals
 
-```json
-{
-  "tagId": 1,
-  "name": "dog",
-  "source": "AUTO"
-}
-```
+Relacion 1:N con `authenticity_results` mediante su `jobId` unico. Permite que
+una respuesta contenga C2PA y SynthID simultaneamente.
 
-### Relaciones
+| Campo | Tipo | Descripcion |
+|---|---|---|
+| `signalId` | String | ID unico persistido |
+| `jobId` | Long | FK al resultado del trabajo |
+| `type` | String | C2PA, SynthID, visual, metadatos o modelo local |
+| `outcome` | String | Detectada, no detectada, inconclusa o no comprobada |
+| `verificationLevel` | String | Local, remota, reportada o visual |
+| `source` | String | Fuente de la señal |
+| `claim` | String | Generacion, edicion, captura o desconocida |
+| `issuer` | String? | Emisor, cuando existe |
+| `model` | String? | Modelo de origen, cuando existe |
+| `generatedAt` | Long? | Fecha declarada de generacion |
+| `explanation` | String? | Explicacion acotada |
+| `validationState` | String? | Estado de validacion C2PA |
 
-* Relación N:M con `photos`, implementada mediante `photo_tag_cross_ref`.
+Niveles de verificacion:
 
-## Tabla 4: photo_tag_cross_ref
+- `LOCALLY_VERIFIED`.
+- `REMOTE_VERIFIED`.
+- `PROVIDER_REPORTED`.
+- `VISUAL_ESTIMATE`.
 
-### Qué representa
+Los niveles describen cómo se obtuvo la evidencia, no su certeza absoluta.
+Gemini y las señales de procedencia custom son `PROVIDER_REPORTED`. Las señales
+del endpoint específico de OpenAI son `REMOTE_VERIFIED`, con cobertura limitada
+a sus señales compatibles. `NOT_CHECKED` de Gemini no genera una fila de señal.
 
-Esta tabla intermedia implementa la relación muchos a muchos entre fotografías y etiquetas.
+La política de resolución actual tiene versión 2. Puede confirmar generación
+mediante evidencia local o remota verificada; las señales reportadas producen
+como máximo posible contenido sintético. No detectar señales nunca demuestra
+autenticidad. El modelo local y la verificación C2PA local no están integrados.
 
-### Campos
+## Entradas de imagen
 
-* `photoId`: Long. Obligatorio. Identificador de la fotografía.
-* `tagId`: Long. Obligatorio. Identificador de la etiqueta.
+- La API custom visual recibe una copia JPEG de hasta 1600 px sin EXIF.
+- Gemini recibe un temporal privado del archivo original PNG, JPEG o WebP,
+  limitado a 14 MiB para su codificacion inline.
+- OpenAI Content Provenance recibe un temporal privado del archivo original,
+  limitado a 50 MiB y eliminado siempre al terminar.
+- Los proveedores normalizados de una evaluacion reutilizan un JPEG privado. El
+  cache se elimina al cerrar la evaluación, también desde cancelación o
+  reconciliación, sin depender de publicar una notificación. Los restos se
+  eliminan al arrancar el proceso.
 
-### Ejemplo de registro
+La limpieza inicial se realiza en IO y se coordina con un bloqueo de
+inicialización que comparten los preparadores. Estos esperan a que termine
+antes de crear copias, evitando que una limpieza asíncrona borre archivos nuevos.
+- Los analisis intensivos se serializan para limitar picos de bitmap, Base64 y red.
+- OpenAI transmite el original por `RequestBody` basado en fichero. Gemini carga
+  como maximo 14 MiB para generar el contenido Base64 requerido por su API.
 
-```json
-{
-  "photoId": 1,
-  "tagId": 1
-}
-```
+Los fallos de acceso al original usan `SOURCE_UNAVAILABLE`; los fallos de la copia
+privada usan `LOCAL_STORAGE`. No se reintentan como indisponibilidad remota.
+Formato o archivo vacío son entrada no válida, y el límite excesivo conserva
+`FILE_TOO_LARGE`. Los parsers comparten lectura estricta de texto y contenedores;
+OpenAI rechaza tipos/outcomes no documentados y las fechas ISO malformadas no se
+descartan silenciosamente. Los errores de parser no adjuntan el cuerpo remoto.
 
-### Relaciones
+## Datos fuera de Room
 
-* Clave foránea hacia `photos(photoId)`.
-* Clave foránea hacia `tags(tagId)`.
+- API keys y tokens: AES/GCM con clave no exportable en Android Keystore.
+- Configuracion no sensible: SharedPreferences.
+- Modelo oficial Gemini seleccionado: SharedPreferences
+  `besharp_provider_models`; cada trabajo guarda despues su propio snapshot.
+- Consentimiento remoto version 3: ligado a proveedor, destino, capacidad y tipo
+  de entrada. Distingue originales de entradas normalizadas.
+- Temporales de procedencia: cache privada, borrada al finalizar o fallar.
+- Trabajos del sistema: WorkManager coordinado con los estados de Room.
+- Dependencias de aplicacion: AppContainer unico compartido por Compose y Worker.
+- Dominio: veredictos, señales y resoluciones viven en `domain/model`; el motor
+  no depende de Room, Android ni proveedores HTTP.
+- Aplicacion: casos de uso separados preparan/cancelan lotes y reconcilian
+  WorkManager con Room.
+- Consultas: AnalysisHistoryRepository construye proyecciones de lectura sin
+  mezclar su mapeo con los comandos de AnalysisQueueRepository.
+- El historial se consulta por evaluación o por su ID. La proyección de cada
+  trabajo conserva estado, proveedor, error y resultado; no repite los datos de
+  imagen y fechas que ya pertenecen a su evaluación. Room mantiene los snapshots
+  completos del trabajo y el modelo realmente utilizado.
+- Los IDs decisivos siguen guardados en `image_assessments` y en el resultado del
+  motor. La proyección para UI no los deserializa porque no tiene consumidores;
+  sí expone los IDs de conflicto que se muestran en el detalle.
+- Presentacion: Galería y detalle usan directamente `GalleryPhoto`, sin una copia
+  idéntica para UI. Las evaluaciones sí tienen modelos de presentación con estados
+  propios; los composables no reciben entidades Room.
+- MediaStore: GalleryRepository sincroniza inserciones, cambios de metadatos y
+  borrados por lotes después de consultar las imágenes accesibles. No se trata de
+  una consulta incremental basada en un token de cambios de MediaStore.
 
-## Tabla 5: folders
+La base de datos, preferencias sensibles, credenciales, imagenes y temporales se
+excluyen del backup de Android.
 
-### Qué representa
+## Capturas privadas y recuperación
 
-Esta tabla almacena las carpetas o agrupaciones principales de la aplicación. 
-Permite organizar las imágenes según categorías generales o agrupaciones definidas automáticamente a partir del 
-contenido procesado.
+`filesDir/photos` contiene las fotos capturadas y sus marcadores de estado:
 
-### Campos
+| Marcador | Significado | Tratamiento |
+|---|---|---|
+| `.pending` | Captura reservada sin confirmación | Se conserva; la cámara puede seguir escribiendo |
+| `.ready` | Captura confirmada con contenido | Se registra en Room y se retira el marcador tras éxito |
+| `.cancelled` | Cancelación explícita | Se borra el archivo; si falla, se conserva para reintentar |
 
-* `folderId`: Long. Obligatorio. Identificador único de la carpeta.
-* `name`: String. Obligatorio. Nombre de la carpeta.
-* `description`: String. Opcional. Breve descripción de la carpeta.
-* `isAutoGenerated`: Boolean. Obligatorio. Indica si la carpeta ha sido creada automáticamente por la app.
-* `createdAt`: Long. Obligatorio. Fecha de creación de la carpeta.
+Cada captura reserva un nombre único. Al arrancar se recuperan las `.ready` y
+se procesan las cancelaciones. Un fallo individual no bloquea las demás fotos;
+el marcador fallido permanece y se informa del fallo parcial. La cancelación
+de una corrutina se propaga sin confirmar operaciones incompletas.
 
-### Ejemplo de registro
+Una foto completada o registrada no se elimina por un callback de cancelación
+tardío. No se deduce abandono por antigüedad, tamaño de un archivo pendiente o
+ausencia de una fila en Room. Los archivos antiguos sin marcador se conservan.
+El directorio completo se excluye del backup y de la transferencia de datos.
 
-```json
-{
-  "folderId": 1,
-  "name": "ANIMALS",
-  "description": "Carpeta generada automáticamente para imágenes con animales.",
-  "isAutoGenerated": true,
-  "createdAt": 1712165500000
-}
-```
+Analisis descubre los marcadores en disco y ofrece recuperar o descartar una
+pendiente tras confirmar el cierre de la camara. Los errores de borrado se
+propagan para permitir reintento. Se retira `.pending` antes de `.ready`, para
+no ofrecer descartar una foto ya registrada si falla la limpieza. Registro y
+recuperacion automatica se serializan en el repositorio.
 
-### Relaciones
+El redimensionado visual comparte un cálculo de dimensiones positivas que no
+amplía imágenes pequeñas. BitmapFactory e ImageDecoder utilizan la misma regla;
+el fallback decodifica la copia privada y no vuelve a abrir el original.
 
-* Relación 1:N con `photos`. Una carpeta puede contener varias fotografías, pero cada fotografía solo tendrá una carpeta principal asociada en esta primera versión.
+## Estado transitorio de presentación
 
-## Relaciones y cardinalidades
+Los ViewModels exponen `StateFlow` y la UI observa con ciclo de vida. La selección
+de análisis y el estado del calendario usan `SavedStateHandle`; los secretos no
+se guardan ahí. Catálogo y validación llevan una versión de configuración para
+ignorar respuestas obsoletas, incluso cuando llega una petición anterior
+después de otra más reciente.
 
-* `photos` → `photo_analysis`: relación 1:1 opcional. Una fotografía puede no haber sido procesada todavía, pero si lo ha sido tendrá un único análisis principal asociado.
-* `photos` ↔ `tags`: relación N:M. Una fotografía puede tener varias etiquetas y una etiqueta puede estar asociada a varias fotografías.
-* `photos` → `folders`: relación N:1. Varias fotografías pueden pertenecer a una misma carpeta principal.
+La validación de URI restauradas retira solo las inválidas de la selección
+vigente. Enviar un lote invalida las lecturas de imágenes pendientes. Los cambios
+de permisos invalidan la sincronización de Galería anterior y permiten una
+actualización inmediata con el nuevo alcance.
 
+Estas protecciones tienen pruebas JVM, pero no sustituyen las pruebas de permisos,
+cámara y muerte real del proceso en dispositivo. El [README](README.md) distingue
+la compilación instrumental de la ejecución de pruebas conectadas.
