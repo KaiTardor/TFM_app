@@ -11,9 +11,6 @@ import com.example.besharp.data.credentials.CredentialValidator
 import com.example.besharp.data.credentials.ProviderCredentialStore
 import com.example.besharp.data.analysis.CustomApiConfiguration
 import com.example.besharp.data.analysis.CustomApiConfigurationStore
-import com.example.besharp.data.analysis.ProviderModelConfigurationStore
-import com.example.besharp.data.analysis.ProviderModelCatalogService
-import com.example.besharp.data.analysis.ProviderModelCatalog
 import com.example.besharp.data.repository.AnalysisQueueRepository
 import com.example.besharp.work.AnalysisScheduler
 import com.example.besharp.application.analysis.CancelAnalysisJobsUseCase
@@ -50,18 +47,9 @@ data class CustomApiDraft(
     val accessToken: String = ""
 )
 
-data class GeminiModelState(
-    val modelId: String,
-    val models: List<String> = emptyList(),
-    val isLoading: Boolean = false,
-    val message: String? = null
-)
-
 class ProfileViewModel(
     private val credentialStore: ProviderCredentialStore,
     private val validationService: CredentialValidator,
-    private val modelConfigurationStore: ProviderModelConfigurationStore,
-    private val modelCatalogService: ProviderModelCatalog,
     private val customApiConfigurationStore: CustomApiConfigurationStore,
     private val analysisQueueRepository: AnalysisQueueRepository,
     private val workScheduler: AnalysisScheduler,
@@ -80,9 +68,6 @@ class ProfileViewModel(
     )
     val credentialDrafts: StateFlow<Map<CredentialProvider, String>> = _credentialDrafts.asStateFlow()
 
-    private val _geminiModel = MutableStateFlow(GeminiModelState(modelConfigurationStore.getModel()))
-    val geminiModel: StateFlow<GeminiModelState> = _geminiModel.asStateFlow()
-
     private val _customApiConfiguration = MutableStateFlow(
         customApiConfigurationStore.getConfiguration()
     )
@@ -97,70 +82,17 @@ class ProfileViewModel(
 
     fun updateCredentialDraft(provider: CredentialProvider, credential: String) {
         if (_credentialDrafts.value[provider] == credential) return
-        invalidateRequests(provider, clearCatalog = true)
-        _credentialDrafts.value = _credentialDrafts.value + (provider to credential)
-    }
-
-    fun updateModelDraft(modelId: String) {
-        val provider = CredentialProvider.GEMINI
-        val normalized = modelId.trim().removePrefix("models/")
-        if (_geminiModel.value.modelId == normalized) return
         invalidateRequests(provider)
-        _geminiModel.value = _geminiModel.value.copy(modelId = normalized)
-    }
-
-    fun refreshAvailableModels() {
-        val provider = CredentialProvider.GEMINI
-        if (_geminiModel.value.isLoading) return
-        if (_providerStates.value[provider]?.saveState is SaveState.Saving) return
-        val version = configurationVersions[provider] ?: 0L
-        val credentialDraft = _credentialDrafts.value[provider]
-        _geminiModel.value = _geminiModel.value.copy(isLoading = true, message = null)
-        viewModelScope.launch {
-            try {
-                val credential = credentialDraft?.trim()?.takeIf { it.isNotBlank() }
-                    ?: withContext(ioDispatcher) { credentialStore.getCredential(provider) }
-                if ((configurationVersions[provider] ?: 0L) != version) return@launch
-                if (credential == null) {
-                    _geminiModel.value = _geminiModel.value.copy(message = "Configura primero una API key")
-                    return@launch
-                }
-                val result = modelCatalogService.fetch(credential)
-                if ((configurationVersions[provider] ?: 0L) != version) return@launch
-                result
-                    .onSuccess { models ->
-                        _geminiModel.value = _geminiModel.value.copy(models = models)
-                    }
-                    .onFailure { error ->
-                        _geminiModel.value = _geminiModel.value.copy(
-                            message = error.message ?: "No se pudieron cargar los modelos"
-                        )
-                    }
-            } catch (exception: CancellationException) {
-                throw exception
-            } catch (_: Exception) {
-                if ((configurationVersions[provider] ?: 0L) == version) {
-                    _geminiModel.value = _geminiModel.value.copy(message = "No se pudo cargar el catalogo")
-                }
-            } finally {
-                if ((configurationVersions[provider] ?: 0L) == version) {
-                    _geminiModel.value = _geminiModel.value.copy(isLoading = false)
-                }
-            }
-        }
+        _credentialDrafts.value = _credentialDrafts.value + (provider to credential)
     }
 
     fun saveCredential(provider: CredentialProvider) {
         if (provider == CredentialProvider.CUSTOM_API) return
         if (_providerStates.value[provider]?.saveState is SaveState.Saving) return
         val credential = _credentialDrafts.value[provider].orEmpty()
-        val modelId = _geminiModel.value.modelId
-        val usesConfigurableModel = provider == CredentialProvider.GEMINI
         val alreadyConfigured = _providerStates.value[provider]?.isConfigured == true
-        if ((usesConfigurableModel && modelId.isBlank()) ||
-            (credential.isBlank() && !alreadyConfigured)
-        ) return
-        invalidateRequests(provider, clearCatalog = credential.isNotBlank())
+        if (credential.isBlank() && !alreadyConfigured) return
+        invalidateRequests(provider)
         val version = configurationVersions[provider]
         updateState(provider) { it.copy(saveState = SaveState.Saving) }
         viewModelScope.launch {
@@ -170,16 +102,13 @@ class ProfileViewModel(
                         if (credential.isNotBlank() && alreadyConfigured) {
                             cancelActiveProviderJobs(provider)
                         }
-                        if (usesConfigurableModel) {
-                            modelConfigurationStore.saveModel(modelId)
-                        }
                         if (credential.isNotBlank()) {
                             credentialStore.saveCredential(provider, credential)
                         }
                     }
                     // No borramos cambios escritos mientras se guardaba el borrador anterior.
                     val draftUnchanged = configurationVersions[provider] == version
-                    invalidateRequests(provider, clearCatalog = credential.isNotBlank())
+                    invalidateRequests(provider)
                     if (draftUnchanged) {
                         _credentialDrafts.value = _credentialDrafts.value + (provider to "")
                     }
@@ -208,7 +137,7 @@ class ProfileViewModel(
 
     fun deleteCredential(provider: CredentialProvider) {
         if (_providerStates.value[provider]?.saveState is SaveState.Saving) return
-        invalidateRequests(provider, clearCatalog = true)
+        invalidateRequests(provider)
         val version = configurationVersions[provider]
         updateState(provider) { it.copy(saveState = SaveState.Saving) }
         viewModelScope.launch {
@@ -219,7 +148,7 @@ class ProfileViewModel(
                         credentialStore.deleteCredential(provider)
                     }
                     val draftUnchanged = configurationVersions[provider] == version
-                    invalidateRequests(provider, clearCatalog = true)
+                    invalidateRequests(provider)
                     updateState(provider) { ProviderCredentialState() }
                     if (draftUnchanged) {
                         _credentialDrafts.value = _credentialDrafts.value + (provider to "")
@@ -246,18 +175,16 @@ class ProfileViewModel(
         ) return
         val version = configurationVersions[provider] ?: 0L
         val credentialDraft = _credentialDrafts.value[provider]
-        val modelId = if (provider == CredentialProvider.GEMINI) _geminiModel.value.modelId else ""
         updateState(provider) {
             it.copy(isValidating = true, validationMessage = null, validationSucceeded = null)
         }
         viewModelScope.launch {
             val result = try {
-                check(provider != CredentialProvider.GEMINI || modelId.isNotBlank()) { "Configura un modelo" }
                 val credential = credentialDraft?.trim()?.takeIf { it.isNotBlank() }
                     ?: withContext(ioDispatcher) { credentialStore.getCredential(provider) }
                     ?: error("No se pudo leer la credencial guardada")
                 if ((configurationVersions[provider] ?: 0L) != version) return@launch
-                validationService.validate(provider, credential, modelId)
+                validationService.validate(provider, credential)
             } catch (exception: CancellationException) {
                 throw exception
             } catch (exception: Exception) {
@@ -363,7 +290,6 @@ class ProfileViewModel(
 
     private suspend fun cancelActiveProviderJobs(provider: CredentialProvider) {
         val prefix = when (provider) {
-            CredentialProvider.GEMINI -> "google-gemini"
             CredentialProvider.OPENAI -> "openai"
             CredentialProvider.CUSTOM_API -> CustomApiConfiguration.CUSTOM_PROVIDER_PREFIX
         }
@@ -421,14 +347,8 @@ class ProfileViewModel(
     }
 
     // Una respuesta solo puede actualizar la configuracion que la solicito.
-    private fun invalidateRequests(provider: CredentialProvider, clearCatalog: Boolean = false) {
+    private fun invalidateRequests(provider: CredentialProvider) {
         configurationVersions[provider] = (configurationVersions[provider] ?: 0L) + 1
-        if (provider == CredentialProvider.GEMINI) {
-            _geminiModel.value = _geminiModel.value.copy(
-                isLoading = false, message = null,
-                models = if (clearCatalog) emptyList() else _geminiModel.value.models
-            )
-        }
         updateState(provider) {
             it.copy(
                 isValidating = false, validationMessage = null, validationSucceeded = null,
@@ -465,8 +385,6 @@ class ProfileViewModel(
 
 class ProfileViewModelFactory(
     private val credentialStore: ProviderCredentialStore,
-    private val modelConfigurationStore: ProviderModelConfigurationStore,
-    private val modelCatalogService: ProviderModelCatalogService,
     private val customApiConfigurationStore: CustomApiConfigurationStore,
     private val analysisQueueRepository: AnalysisQueueRepository,
     private val workScheduler: AnalysisScheduler,
@@ -478,8 +396,6 @@ class ProfileViewModelFactory(
             return ProfileViewModel(
                 credentialStore,
                 validationService,
-                modelConfigurationStore,
-                modelCatalogService,
                 customApiConfigurationStore,
                 analysisQueueRepository,
                 workScheduler

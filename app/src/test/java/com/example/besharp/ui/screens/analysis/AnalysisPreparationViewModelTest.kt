@@ -3,8 +3,7 @@ package com.example.besharp.ui.screens.analysis
 import com.example.besharp.data.analysis.CustomApiConfiguration
 import com.example.besharp.data.analysis.CustomApiConfigurationStore
 import com.example.besharp.data.analysis.AnalysisProviderResolver
-import com.example.besharp.data.analysis.ProviderModelConfigurationStore
-import com.example.besharp.data.analysis.GeminiAnalysisProvider
+import com.example.besharp.data.analysis.OpenAiProvenanceProvider
 import com.example.besharp.data.credentials.CredentialProvider
 import com.example.besharp.data.credentials.ProviderCredentialStore
 import com.example.besharp.data.local.dao.AnalysisJobWithResult
@@ -84,11 +83,11 @@ class AnalysisPreparationViewModelTest {
             dao,
             scheduler,
             AllowConsent(consentJob),
-            configuredProviders = setOf(CredentialProvider.GEMINI)
+            configuredProviders = setOf(CredentialProvider.OPENAI)
         )
         advanceUntilIdle()
         viewModel.addCapturedImage("content://new", "new.jpg")
-        viewModel.toggleModel(AnalysisProviderResolver.GEMINI_PROVIDER_ID)
+        viewModel.toggleModel(AnalysisProviderResolver.OPENAI_PROVENANCE_PROVIDER_ID)
 
         viewModel.analyze()
         runCurrent()
@@ -111,11 +110,11 @@ class AnalysisPreparationViewModelTest {
             dao,
             scheduler,
             AllowConsent(testJob()),
-            configuredProviders = setOf(CredentialProvider.GEMINI)
+            configuredProviders = setOf(CredentialProvider.OPENAI)
         )
         advanceUntilIdle()
         viewModel.addCapturedImage("content://new", "new.jpg")
-        viewModel.toggleModel(AnalysisProviderResolver.GEMINI_PROVIDER_ID)
+        viewModel.toggleModel(AnalysisProviderResolver.OPENAI_PROVENANCE_PROVIDER_ID)
 
         viewModel.analyze()
         viewModel.analyze()
@@ -129,16 +128,18 @@ class AnalysisPreparationViewModelTest {
     fun persistsEveryProviderJobBeforeSchedulingFirstWorker() = runTest(dispatcher) {
         val dao = FakeDao()
         val scheduler = InspectingScheduler { dao.allJobs().size }
+        val custom = CustomApiConfiguration("Detector", "https://custom.example/analyze", "v1")
         val viewModel = createViewModel(
             dao,
             scheduler,
             AllowAllConsent,
-            configuredProviders = setOf(CredentialProvider.GEMINI, CredentialProvider.OPENAI)
+            configuredProviders = setOf(CredentialProvider.OPENAI, CredentialProvider.CUSTOM_API),
+            customConfiguration = custom
         )
         advanceUntilIdle()
         viewModel.addCapturedImage("content://atomic", "atomic.jpg")
-        viewModel.toggleModel(AnalysisProviderResolver.GEMINI_PROVIDER_ID)
-        viewModel.toggleModel(AnalysisProviderResolver.OPENAI_PROVIDER_ID)
+        viewModel.toggleModel(AnalysisProviderResolver.OPENAI_PROVENANCE_PROVIDER_ID)
+        viewModel.toggleModel(custom.providerId())
 
         viewModel.analyze()
         advanceUntilIdle()
@@ -156,12 +157,12 @@ class AnalysisPreparationViewModelTest {
             dao,
             scheduler,
             AllowConsent(testJob()),
-            configuredProviders = setOf(CredentialProvider.GEMINI)
+            configuredProviders = setOf(CredentialProvider.OPENAI)
         )
         advanceUntilIdle()
         viewModel.addCapturedImage("content://one", "one.jpg")
         viewModel.addCapturedImage("content://two", "two.jpg")
-        viewModel.toggleModel(AnalysisProviderResolver.GEMINI_PROVIDER_ID)
+        viewModel.toggleModel(AnalysisProviderResolver.OPENAI_PROVENANCE_PROVIDER_ID)
 
         viewModel.analyze()
         advanceUntilIdle()
@@ -304,26 +305,25 @@ class AnalysisPreparationViewModelTest {
         val custom = CustomApiConfiguration("Detector", "https://custom.example/analyze", "v1")
         val viewModel = createViewModel(
             FakeDao(), KeepScheduler(), AllowAllConsent,
-            configuredProviders = setOf(CredentialProvider.GEMINI, CredentialProvider.OPENAI),
+            configuredProviders = setOf(CredentialProvider.OPENAI, CredentialProvider.CUSTOM_API),
             customConfiguration = custom
         )
         advanceUntilIdle()
         val original = com.example.besharp.domain.model.AnalysisInputType.ORIGINAL_FILE
         val normalized = com.example.besharp.domain.model.AnalysisInputType.NORMALIZED_IMAGE
         assertTrue(viewModel.selectedConsentPreview().inputTypes.isEmpty())
-        viewModel.toggleModel(AnalysisProviderResolver.GEMINI_PROVIDER_ID)
-        viewModel.toggleModel(AnalysisProviderResolver.OPENAI_PROVIDER_ID)
+        viewModel.toggleModel(AnalysisProviderResolver.OPENAI_PROVENANCE_PROVIDER_ID)
         assertEquals(setOf(original), viewModel.selectedConsentPreview().inputTypes)
         viewModel.toggleModel(custom.providerId())
         assertEquals(setOf(original, normalized), viewModel.selectedConsentPreview().inputTypes)
-        viewModel.toggleModel(AnalysisProviderResolver.GEMINI_PROVIDER_ID)
-        viewModel.toggleModel(AnalysisProviderResolver.OPENAI_PROVIDER_ID)
+        viewModel.toggleModel(AnalysisProviderResolver.OPENAI_PROVENANCE_PROVIDER_ID)
         assertEquals(setOf(normalized), viewModel.selectedConsentPreview().inputTypes)
     }
 
     @Test
     fun consentOnlyAuthorizesTheDisplayedSelection() = runTest(dispatcher) {
         var accepted = 0
+        val custom = CustomApiConfiguration("Detector", "https://custom.example/analyze", "v1")
         val consent = object : RemoteConsentStore by AllowAllConsent {
             override fun accept(targets: Set<RemoteConsentTarget>): RemoteConsentRecord {
                 accepted++
@@ -332,12 +332,13 @@ class AnalysisPreparationViewModelTest {
         }
         val viewModel = createViewModel(
             FakeDao(), KeepScheduler(), consent,
-            configuredProviders = setOf(CredentialProvider.GEMINI, CredentialProvider.OPENAI)
+            configuredProviders = setOf(CredentialProvider.OPENAI, CredentialProvider.CUSTOM_API),
+            customConfiguration = custom
         )
         advanceUntilIdle()
-        viewModel.toggleModel(AnalysisProviderResolver.GEMINI_PROVIDER_ID)
+        viewModel.toggleModel(AnalysisProviderResolver.OPENAI_PROVENANCE_PROVIDER_ID)
         val displayed = viewModel.selectedConsentPreview()
-        viewModel.toggleModel(AnalysisProviderResolver.OPENAI_PROVIDER_ID)
+        viewModel.toggleModel(custom.providerId())
         assertFalse(viewModel.acceptRemoteConsent(displayed))
         assertEquals(0, accepted)
         assertTrue(viewModel.acceptRemoteConsent(viewModel.selectedConsentPreview()))
@@ -359,7 +360,7 @@ class AnalysisPreparationViewModelTest {
             mapOf(
                 "analysis_image_uris" to arrayListOf("content://pending"),
                 "analysis_image_names" to arrayListOf("pending.jpg"),
-                "analysis_selected_models" to arrayListOf(AnalysisProviderResolver.GEMINI_PROVIDER_ID)
+                "analysis_selected_models" to arrayListOf(AnalysisProviderResolver.OPENAI_PROVENANCE_PROVIDER_ID)
             )
         )
 
@@ -367,14 +368,14 @@ class AnalysisPreparationViewModelTest {
             dao = FakeDao(),
             scheduler = KeepScheduler(),
             consent = AllowConsent(testJob()),
-            configuredProviders = setOf(CredentialProvider.GEMINI),
+            configuredProviders = setOf(CredentialProvider.OPENAI),
             savedStateHandle = savedState
         )
         advanceUntilIdle()
 
         assertEquals(listOf("content://pending"), viewModel.uiState.value.images.map { it.uri })
         assertEquals(
-            setOf(AnalysisProviderResolver.GEMINI_PROVIDER_ID),
+            setOf(AnalysisProviderResolver.OPENAI_PROVENANCE_PROVIDER_ID),
             viewModel.uiState.value.selectedModelIds
         )
     }
@@ -404,11 +405,11 @@ class AnalysisPreparationViewModelTest {
         val dao = FakeDao()
         val viewModel = createViewModel(
             dao, KeepScheduler(), AllowAllConsent,
-            configuredProviders = setOf(CredentialProvider.GEMINI)
+            configuredProviders = setOf(CredentialProvider.OPENAI)
         )
         advanceUntilIdle()
         viewModel.addCapturedImage("content://submitted", "submitted.jpg")
-        viewModel.toggleModel(AnalysisProviderResolver.GEMINI_PROVIDER_ID)
+        viewModel.toggleModel(AnalysisProviderResolver.OPENAI_PROVENANCE_PROVIDER_ID)
         val reply = CompletableDeferred<List<SelectedAnalysisImage>>()
         viewModel.addImages { reply.await() }
         runCurrent()
@@ -556,14 +557,7 @@ class AnalysisPreparationViewModelTest {
             custom,
             repository,
             com.example.besharp.data.repository.AnalysisHistoryRepository(dao),
-            AnalysisProviderResolver(
-                credentials,
-                custom,
-                object : ProviderModelConfigurationStore {
-                    override fun getModel() = GeminiAnalysisProvider.DEFAULT_MODEL
-                    override fun saveModel(modelId: String) = Unit
-                }
-            ),
+            AnalysisProviderResolver(credentials, custom),
             scheduler,
             consent,
             ioDispatcher = dispatcher,
@@ -574,13 +568,13 @@ class AnalysisPreparationViewModelTest {
     private fun testJob() = AnalysisJobEntity(
         jobId = 42,
         assessmentId = 1,
-        providerId = AnalysisProviderResolver.GEMINI_PROVIDER_ID,
-        providerName = "Gemini",
-        modelId = "gemini-2.5-flash",
+        providerId = AnalysisProviderResolver.OPENAI_PROVENANCE_PROVIDER_ID,
+        providerName = "OpenAI",
+        modelId = OpenAiProvenanceProvider.MODEL_ID,
         capability = com.example.besharp.domain.model.AnalysisCapability.CONTENT_PROVENANCE.name,
         inputType = com.example.besharp.domain.model.AnalysisInputType.ORIGINAL_FILE.name,
         executionId = "execution-42",
-        destinationFingerprint = "${AnalysisProviderResolver.GEMINI_PROVIDER_ID}:${GeminiAnalysisProvider.DEFAULT_MODEL}",
+        destinationFingerprint = "${AnalysisProviderResolver.OPENAI_PROVENANCE_PROVIDER_ID}:${OpenAiProvenanceProvider.MODEL_ID}",
         status = AnalysisJobStatus.QUEUED,
         createdAt = 1L
     )

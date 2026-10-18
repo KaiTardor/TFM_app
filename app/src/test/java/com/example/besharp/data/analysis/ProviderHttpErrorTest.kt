@@ -8,7 +8,7 @@ class ProviderHttpErrorTest {
     @Test
     fun classifiesAuthenticationAndQuotaErrors() {
         val authentication = providerHttpError("OpenAI", 401)
-        val quota = providerHttpError("Gemini", 429)
+        val quota = providerHttpError("OpenAI", 429)
 
         assertEquals(401, authentication.httpStatus)
         assertTrue(authentication.message.orEmpty().contains("credenciales"))

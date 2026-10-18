@@ -269,7 +269,6 @@ class AnalysisQueueRepository(
     ): String {
         val provider = when {
             providerId == "openai" || providerId.startsWith("openai:") -> "OpenAI"
-            providerId == "google-gemini" || providerId.startsWith("google-gemini:") -> "Gemini"
             providerId.startsWith(CustomApiConfiguration.CUSTOM_PROVIDER_PREFIX) -> "La API personalizada"
             else -> "El proveedor de analisis"
         }

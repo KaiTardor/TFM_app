@@ -5,9 +5,13 @@ adaptar la aplicacion a su implementacion interna. El endpoint debe usar HTTPS y
 aceptar una peticion `POST` con contenido `application/json`.
 
 Este contrato corresponde exclusivamente a `CustomApiAnalysisProvider`. No es
-el formato de OpenAI Content Provenance ni el protocolo solicitado a Gemini.
+el formato de OpenAI Content Provenance.
 La API personalizada recibe una imagen normalizada y no dispone, a través de
 esta petición, de los metadatos del original necesarios para verificar C2PA.
+
+Se documenta el cliente existente y los requisitos que debe cumplir un servidor
+compatible, no un servidor desplegado. El modelo local sigue pendiente de
+entrenamiento y de definir su contrato de integración en el dispositivo.
 
 ## Configuración del destino
 
@@ -69,8 +73,8 @@ red, límite de peticiones e indisponibilidad temporal. Los errores de contrato
 o autenticación no provocan esos reintentos.
 
 OpenAI Content Provenance tiene su propia política de reintentos transitorios.
-Gemini no se reintenta automáticamente. Ya no existe un proveedor visual de
-OpenAI. La deduplicación solicitada aquí debe implementarla el servidor custom;
+La integración con OpenAI es de procedencia, no de estimación visual.
+La deduplicación solicitada aquí debe implementarla el servidor custom;
 no debe suponerse que todos los endpoints oficiales tienen la misma garantía.
 
 ## Respuesta correcta

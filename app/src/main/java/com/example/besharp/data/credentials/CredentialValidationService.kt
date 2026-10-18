@@ -1,6 +1,6 @@
 package com.example.besharp.data.credentials
 
-// Comprueba el acceso al proveedor con la credencial y el modelo configurados.
+// Comprueba el acceso al proveedor con la credencial configurada.
 
 import com.example.besharp.data.analysis.awaitBoundedResponse
 import kotlinx.coroutines.CancellationException
@@ -9,7 +9,7 @@ import okhttp3.Request
 import java.util.concurrent.TimeUnit
 
 fun interface CredentialValidator {
-    suspend fun validate(provider: CredentialProvider, credential: String, modelId: String): Result<Unit>
+    suspend fun validate(provider: CredentialProvider, credential: String): Result<Unit>
 }
 
 class CredentialValidationService(
@@ -21,11 +21,10 @@ class CredentialValidationService(
 ) : CredentialValidator {
     override suspend fun validate(
         provider: CredentialProvider,
-        credential: String,
-        modelId: String
+        credential: String
     ): Result<Unit> {
         return try {
-            val request = buildValidationRequest(provider, credential, modelId)
+            val request = buildValidationRequest(provider, credential)
             val response = client.newCall(request).awaitBoundedResponse()
             when (response.statusCode) {
                 in 200..299 -> Unit
@@ -43,15 +42,8 @@ class CredentialValidationService(
 
     internal fun buildValidationRequest(
         provider: CredentialProvider,
-        credential: String,
-        modelId: String
+        credential: String
     ): Request = when (provider) {
-        CredentialProvider.GEMINI -> Request.Builder()
-            .url("https://generativelanguage.googleapis.com/v1beta/models/$modelId")
-            .header("x-goog-api-key", credential)
-            .get()
-            .build()
-
         // Valida la clave, no garantiza acceso al endpoint de procedencia.
         CredentialProvider.OPENAI -> Request.Builder()
             .url("https://api.openai.com/v1/models")

@@ -24,7 +24,6 @@ class AnalysisWorkerRetryPolicyTest {
         assertTrue(AnalysisExecutionPolicy.shouldRetryRequest(customProviderId, networkFailure))
         assertTrue(AnalysisExecutionPolicy.shouldRetryRequest(OpenAiProvenanceProvider.PROVIDER_ID, networkFailure))
         assertFalse(AnalysisExecutionPolicy.shouldRetryRequest(AnalysisProviderResolver.OPENAI_PROVIDER_ID, networkFailure))
-        assertFalse(AnalysisExecutionPolicy.shouldRetryRequest(AnalysisProviderResolver.GEMINI_PROVIDER_ID, networkFailure))
     }
 
     @Test

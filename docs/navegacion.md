@@ -35,8 +35,8 @@ actualizar inmediatamente sin aplicar el límite habitual de cinco minutos.
 
 Con acceso parcial, las referencias MediaStore no autorizadas quedan ocultas,
 no se consideran fotos borradas. La UI ofrece solicitar acceso o abrir Ajustes
-cuando corresponde. El comportamiento real del diálogo del sistema sigue
-pendiente de verificación conectada.
+cuando corresponde. Las comprobaciones generales en dispositivo se consideran
+realizadas por el autor.
 
 ## Preparación de un análisis
 
@@ -104,8 +104,7 @@ como clave de composición, sin heredar expansión de otra evaluación.
 
 Los destinos consultan la foto o evaluación por su identificador y muestran
 carga, error o contenido no disponible en lugar de quedar vacíos. El detalle de
-una evaluación no depende del límite de entradas del historial. Sigue pendiente
-la verificación en dispositivo de esos flujos.
+una evaluación no depende del límite de entradas del historial.
 
 Si falla la carga real de la imagen, el detalle muestra una explicación y una
 acción de reintento. Compartir y Analizar quedan deshabilitados mientras no se
@@ -117,19 +116,17 @@ elección; después se eliminan las demás evaluaciones completadas de esa image
 
 ## Ajustes
 
-- Proveedores: claves de Gemini y OpenAI, catálogo y modelo de Gemini, enlace al
+- Proveedores: clave de OpenAI, enlace al
   verificador web de OpenAI y configuración de una API personalizada.
 - Personalización: tema del sistema, claro u oscuro, y tipografía del sistema.
 - Notificaciones: activación general y preferencias para resultados y errores.
 - Permisos: estado de acceso y acceso a los ajustes de Android.
 - Acerca de BeSharp: versión, privacidad y Cómo funciona BeSharp.
 
-OpenAI Content Provenance no tiene selección de modelo GPT. Gemini continúa
-disponible, pero su API estándar no ofrece un verificador de procedencia
-documentado y normalmente responde `NOT_CHECKED`.
-
-El modelo de Gemini se selecciona como borrador y se confirma con Guardar.
-Cargar su catálogo no modifica la configuración ni sustituye la clave.
+OpenAI Content Provenance no tiene selección de modelo GPT. La API personalizada
+permite configurar el modelo requerido por el endpoint externo; disponer del
+cliente no implica que haya un servidor desplegado. El modelo local sigue
+pendiente de entrenamiento y contrato de integración.
 
 La selección de proveedores obtiene nombre y modelo del mismo descriptor que
 utiliza el análisis. Los proveedores actuales son remotos; el consentimiento
@@ -138,7 +135,7 @@ explica el envío sin repetir una etiqueta de ubicación en cada opción.
 ## Consentimiento y notificaciones
 
 El consentimiento identifica el proveedor, destino, capacidad y tipo de archivo.
-Gemini y OpenAI reciben originales; la API personalizada recibe una copia JPEG
+OpenAI recibe originales; la API personalizada recibe una copia JPEG
 normalizada sin EXIF. Consultar la página legal desde el diálogo permite volver
 a la preparación del consentimiento.
 

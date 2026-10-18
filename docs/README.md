@@ -22,7 +22,6 @@ demuestra que una imagen sea auténtica.
 | Proveedor | Entrada | Límite del original | Interpretación |
 |---|---|---|---|
 | OpenAI Content Provenance | Original PNG, JPEG o WebP | 50 MiB | Señales `REMOTE_VERIFIED` |
-| Gemini | Original PNG, JPEG o WebP codificado en Base64 | 14 MiB | Señales `PROVIDER_REPORTED` |
 | API personalizada | Copia JPEG de hasta 1600 px, sin EXIF, en Base64 | No recibe el original | Estimación visual o señales reportadas |
 
 ### OpenAI
@@ -36,13 +35,17 @@ OpenAI: no es un detector universal de imágenes generadas por otras empresas.
 
 Referencia: [documentación de Content Provenance](https://developers.openai.com/api/docs/guides/content-provenance).
 
-### Gemini
-
-Por gemini api....
-
 ### API personalizada
 
-En realización....
+BeSharp dispone de un cliente configurable para enviar una copia JPEG normalizada
+a un endpoint HTTPS mediante el [contrato personalizado 1.0](custom_api_contract.md).
+Permite configurar nombre, URL, modelo y un token Bearer opcional. El cliente
+valida la respuesta y conserva las estimaciones o señales reportadas sin
+equipararlas a una verificación de procedencia.
+
+Este contrato no implica que exista un servidor desplegado ni valida su
+implementación. El modelo local sigue pendiente de entrenamiento y de definir
+su contrato de integración; todavía no está integrado en el dispositivo.
 
 ## Resolución y conservación
 
@@ -94,8 +97,8 @@ se ofrece reintento, incluso sin permiso para consultar MediaStore.
 | Dependencias | `AppContainer` compartido por UI y Worker, sin Hilt |
 
 Galería y Ajustes comparten la lectura de permisos de fotos. Los cambios de
-alcance invalidan la sincronización anterior. Las respuestas de catálogo y
-validación se aplican solo si sigue vigente su versión de configuración.
+alcance invalidan la sincronización anterior. Las respuestas de validación se
+aplican solo si sigue vigente su versión de configuración.
 
 El consentimiento muestra una instantánea coherente de nombres, destinos y
 tipos de entrada, y confirma que siga vigente antes de autorizar. Las escrituras
@@ -108,15 +111,18 @@ solo los reintentos explicitamente devueltos a `QUEUED` pueden hacerlo.
 
 ## Pruebas esenciales
 
-Se conservan 21 archivos JVM y 3 instrumentales centrados en resolucion de
-evidencias, contratos HTTP, consentimiento, concurrencia, recuperacion de archivos
-y persistencia. Se han retirado 18 archivos de pruebas de presentacion sencilla,
-preferencias de apariencia y comprobaciones redundantes del esquema.
+Se conservan pruebas JVM e instrumentales centradas en resolucion de evidencias,
+contratos HTTP, consentimiento, concurrencia, recuperacion de archivos y
+persistencia, sin fijar aqui un recuento de archivos.
 
 Las pruebas manuales en dispositivo han sido realizadas por el autor. No se
 duplica toda esa cobertura con pruebas de componentes visuales. Se mantienen
 pruebas de fallos concretos que una comprobacion manual normal no reproduce:
 escrituras parciales, callbacks tardios, cancelacion y respuestas remotas invalidas.
+
+Queda una verificacion puntual de los cambios recientes de recuperacion:
+capturas sin callback con recuperar/descartar, registro fallido y trabajo
+interrumpido sin reenvio automatico. No requiere repetir toda la matriz manual.
 
 - JVM: `gradlew.bat testDebugUnitTest`.
 - Compilacion: `gradlew.bat assembleDebug assembleDebugAndroidTest lintDebug`.
@@ -140,5 +146,5 @@ No se ha medido aun la duracion del arranque en frio.
 - [Estructura de datos](estructura_datos.md): persistencia, estados y archivos.
 - [Navegación](navegacion.md): destinos y flujos de usuario.
 - [Contrato personalizado](custom_api_contract.md): integración de detectores externos.
-- [Plan de implementación](implementation_plan.md): revisión de propuestas,
-  decisiones y estado de los cambios de la última auditoría.
+- [Plan de implementación](implementation_plan.md): pendientes de medición,
+  recuperación e integración del modelo local.

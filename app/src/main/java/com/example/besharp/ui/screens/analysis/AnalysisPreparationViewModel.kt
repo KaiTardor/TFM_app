@@ -145,13 +145,12 @@ class AnalysisPreparationViewModel(
     fun refreshModels() {
         val custom = customApiConfigurationStore.getConfiguration()
         val models = buildList {
-            for ((id, credential) in listOf(
-                AnalysisProviderResolver.GEMINI_PROVIDER_ID to CredentialProvider.GEMINI,
-                AnalysisProviderResolver.OPENAI_PROVIDER_ID to CredentialProvider.OPENAI
-            )) {
-                val provider = providerResolver.describe(id)
-                add(AnalysisModelOption(id, provider.displayName, provider.modelId, credentialStore.hasCredential(credential)))
-            }
+            val id = AnalysisProviderResolver.OPENAI_PROVENANCE_PROVIDER_ID
+            val provider = providerResolver.describe(id)
+            add(AnalysisModelOption(
+                id, provider.displayName, provider.modelId,
+                credentialStore.hasCredential(CredentialProvider.OPENAI)
+            ))
             if (custom != null) {
                 add(AnalysisModelOption(
                     id = custom.providerId(),

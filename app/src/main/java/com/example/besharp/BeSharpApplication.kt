@@ -8,8 +8,6 @@ import com.example.besharp.data.analysis.AnalysisProviderResolver
 import com.example.besharp.data.analysis.AnalysisTemporaryFiles
 import com.example.besharp.data.analysis.AnalysisImagePreprocessor
 import com.example.besharp.data.analysis.SharedPreferencesCustomApiConfigurationStore
-import com.example.besharp.data.analysis.SharedPreferencesProviderModelConfigurationStore
-import com.example.besharp.data.analysis.ProviderModelCatalogService
 import com.example.besharp.data.credentials.AndroidKeystoreCredentialStore
 import com.example.besharp.data.local.database.AppDatabase
 import com.example.besharp.data.privacy.RemoteAnalysisConsentStore
@@ -67,10 +65,6 @@ class AppContainer(context: Context) {
     val customApiConfigurationStore by lazy {
         SharedPreferencesCustomApiConfigurationStore(appContext)
     }
-    val providerModelConfigurationStore by lazy {
-        SharedPreferencesProviderModelConfigurationStore(appContext)
-    }
-    val providerModelCatalogService by lazy { ProviderModelCatalogService() }
     val remoteAnalysisConsentStore by lazy { RemoteAnalysisConsentStore(appContext) }
     val analysisQueueRepository by lazy {
         AnalysisQueueRepository(database.analysisQueueDao(), onAssessmentCompleted = { id ->
@@ -86,8 +80,7 @@ class AppContainer(context: Context) {
     val providerResolver by lazy {
         AnalysisProviderResolver(
             credentialStore,
-            customApiConfigurationStore,
-            providerModelConfigurationStore
+            customApiConfigurationStore
         )
     }
     val analysisWorkScheduler by lazy { AnalysisWorkScheduler(appContext) }

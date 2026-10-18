@@ -2,10 +2,6 @@ package com.example.besharp.ui.screens.profile
 
 import com.example.besharp.data.analysis.CustomApiConfiguration
 import com.example.besharp.data.analysis.CustomApiConfigurationStore
-import com.example.besharp.data.analysis.ProviderModelConfigurationStore
-import com.example.besharp.data.analysis.GeminiAnalysisProvider
-import com.example.besharp.data.analysis.ProviderModelCatalogService
-import com.example.besharp.data.analysis.ProviderModelCatalog
 import com.example.besharp.data.credentials.CredentialProvider
 import com.example.besharp.data.credentials.CredentialValidationService
 import com.example.besharp.data.credentials.CredentialValidator
@@ -44,27 +40,25 @@ class ProfileViewModelTest {
         val viewModel = ProfileViewModel(
             credentialStore = credentials,
             validationService = CredentialValidationService(),
-            modelConfigurationStore = FakeModelStore(),
-            modelCatalogService = ProviderModelCatalogService(),
             customApiConfigurationStore = EmptyCustomStore,
             analysisQueueRepository = AnalysisQueueRepository(EmptyQueueDao),
             workScheduler = EmptyScheduler,
             ioDispatcher = dispatcher
         )
 
-        viewModel.updateCredentialDraft(CredentialProvider.GEMINI, "secret-draft")
-        viewModel.saveCredential(CredentialProvider.GEMINI)
+        viewModel.updateCredentialDraft(CredentialProvider.OPENAI, "secret-draft")
+        viewModel.saveCredential(CredentialProvider.OPENAI)
         advanceUntilIdle()
 
-        assertEquals("secret-draft", viewModel.credentialDrafts.value[CredentialProvider.GEMINI])
-        assertTrue(viewModel.providerStates.value[CredentialProvider.GEMINI]?.saveState is SaveState.Error)
+        assertEquals("secret-draft", viewModel.credentialDrafts.value[CredentialProvider.OPENAI])
+        assertTrue(viewModel.providerStates.value[CredentialProvider.OPENAI]?.saveState is SaveState.Error)
 
         credentials.failSave = false
-        viewModel.saveCredential(CredentialProvider.GEMINI)
+        viewModel.saveCredential(CredentialProvider.OPENAI)
         advanceUntilIdle()
 
-        assertEquals("", viewModel.credentialDrafts.value[CredentialProvider.GEMINI])
-        assertTrue(viewModel.providerStates.value[CredentialProvider.GEMINI]?.saveState is SaveState.Success)
+        assertEquals("", viewModel.credentialDrafts.value[CredentialProvider.OPENAI])
+        assertTrue(viewModel.providerStates.value[CredentialProvider.OPENAI]?.saveState is SaveState.Success)
         } finally {
             Dispatchers.resetMain()
         }
@@ -83,8 +77,6 @@ class ProfileViewModelTest {
             val viewModel = ProfileViewModel(
                 credentials,
                 CredentialValidationService(),
-                FakeModelStore(),
-                ProviderModelCatalogService(),
                 customStore,
                 AnalysisQueueRepository(EmptyQueueDao),
                 EmptyScheduler,
@@ -119,8 +111,6 @@ class ProfileViewModelTest {
             val viewModel = ProfileViewModel(
                 credentials,
                 CredentialValidationService(),
-                FakeModelStore(),
-                ProviderModelCatalogService(),
                 customStore,
                 AnalysisQueueRepository(EmptyQueueDao),
                 EmptyScheduler,
@@ -146,47 +136,13 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun configuredProviderPersistsSelectedModelWithoutReplacingKey() = runTest {
-        val dispatcher = StandardTestDispatcher(testScheduler)
-        Dispatchers.setMain(dispatcher)
-        val credentials = FakeCredentialStore().apply {
-            saveCredential(CredentialProvider.GEMINI, "stored-key")
-        }
-        val models = FakeModelStore()
-        try {
-            val viewModel = ProfileViewModel(
-                credentials,
-                CredentialValidationService(),
-                models,
-                ProviderModelCatalogService(),
-                EmptyCustomStore,
-                AnalysisQueueRepository(EmptyQueueDao),
-                EmptyScheduler,
-                dispatcher
-            )
-
-            viewModel.updateModelDraft("gemini-new")
-            assertEquals(GeminiAnalysisProvider.DEFAULT_MODEL, models.getModel())
-            viewModel.saveCredential(CredentialProvider.GEMINI)
-            advanceUntilIdle()
-
-            assertEquals("gemini-new", models.getModel())
-            assertEquals("stored-key", credentials.getCredential(CredentialProvider.GEMINI))
-            assertTrue(viewModel.providerStates.value[CredentialProvider.GEMINI]?.saveState is SaveState.Success)
-        } finally {
-            Dispatchers.resetMain()
-        }
-    }
-
-    @Test
     fun savingCredentialPreservesNewerDraft() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         Dispatchers.setMain(dispatcher)
         try {
             val credentials = FakeCredentialStore()
             val viewModel = ProfileViewModel(
-                credentials, CredentialValidationService(), FakeModelStore(),
-                ProviderModelCatalogService(), EmptyCustomStore,
+                credentials, CredentialValidationService(), EmptyCustomStore,
                 AnalysisQueueRepository(EmptyQueueDao), EmptyScheduler, dispatcher
             )
             credentials.onSave = {
@@ -211,8 +167,7 @@ class ProfileViewModelTest {
         try {
             val custom = FakeCustomStore(null)
             val viewModel = ProfileViewModel(
-                FakeCredentialStore(), CredentialValidationService(), FakeModelStore(),
-                ProviderModelCatalogService(), custom,
+                FakeCredentialStore(), CredentialValidationService(), custom,
                 AnalysisQueueRepository(EmptyQueueDao), EmptyScheduler, dispatcher
             )
             val submitted = CustomApiDraft("Enviado", "https://first.example/analyze", "v1")
@@ -262,8 +217,7 @@ class ProfileViewModelTest {
                 saveCredential(CredentialProvider.CUSTOM_API, "previous-token")
             }
             val viewModel = ProfileViewModel(
-                credentials, CredentialValidationService(), FakeModelStore(),
-                ProviderModelCatalogService(), customStore,
+                credentials, CredentialValidationService(), customStore,
                 AnalysisQueueRepository(dao), scheduler, dispatcher
             )
             viewModel.updateCustomApiDraft(viewModel.customApiDraft.value.copy(accessToken = "new-token"))
@@ -279,61 +233,24 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun validationCannotPublishAfterCredentialOrModelChanges() = runTest {
+    fun validationCannotPublishAfterCredentialChanges() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         Dispatchers.setMain(dispatcher)
         try {
-            for (changeModel in listOf(false, true)) {
-                val reply = CompletableDeferred<Result<Unit>>()
-                val viewModel = networkViewModel(
-                    dispatcher,
-                    validator = CredentialValidator { _, _, _ -> reply.await() }
-                )
-                viewModel.validateCredential(CredentialProvider.GEMINI)
-                runCurrent()
-                assertTrue(viewModel.providerStates.value[CredentialProvider.GEMINI]?.isValidating == true)
-                if (changeModel) viewModel.updateModelDraft("gemini-new")
-                else viewModel.updateCredentialDraft(CredentialProvider.GEMINI, "new-key")
-                reply.complete(Result.success(Unit))
-                advanceUntilIdle()
-
-                assertEquals(null, viewModel.providerStates.value[CredentialProvider.GEMINI]?.validationSucceeded)
-                assertFalse(viewModel.providerStates.value[CredentialProvider.GEMINI]?.isValidating == true)
-            }
-        } finally {
-            Dispatchers.resetMain()
-        }
-    }
-
-    @Test
-    fun obsoleteCatalogCannotSelectAModelOrClearNewRequestLoadingState() = runTest {
-        val dispatcher = StandardTestDispatcher(testScheduler)
-        Dispatchers.setMain(dispatcher)
-        try {
-            val oldReply = CompletableDeferred<Result<List<String>>>()
-            val newReply = CompletableDeferred<Result<List<String>>>()
+            val reply = CompletableDeferred<Result<Unit>>()
             val viewModel = networkViewModel(
                 dispatcher,
-                catalog = ProviderModelCatalog { credential ->
-                    if (credential == "stored-key") oldReply.await() else newReply.await()
-                }
+                validator = CredentialValidator { _, _ -> reply.await() }
             )
-            viewModel.refreshAvailableModels()
+            viewModel.validateCredential(CredentialProvider.OPENAI)
             runCurrent()
-            viewModel.updateCredentialDraft(CredentialProvider.GEMINI, "new-key")
-            viewModel.refreshAvailableModels()
-            runCurrent()
-            oldReply.complete(Result.success(listOf("gemini-obsolete")))
-            runCurrent()
-
-            assertTrue(viewModel.geminiModel.value.models.isEmpty())
-            assertEquals(GeminiAnalysisProvider.DEFAULT_MODEL, viewModel.geminiModel.value.modelId)
-            assertTrue(viewModel.geminiModel.value.isLoading)
-
-            newReply.complete(Result.success(listOf(GeminiAnalysisProvider.DEFAULT_MODEL)))
+            assertTrue(viewModel.providerStates.value[CredentialProvider.OPENAI]?.isValidating == true)
+            viewModel.updateCredentialDraft(CredentialProvider.OPENAI, "new-key")
+            reply.complete(Result.success(Unit))
             advanceUntilIdle()
-            assertEquals(listOf(GeminiAnalysisProvider.DEFAULT_MODEL), viewModel.geminiModel.value.models)
-            assertFalse(viewModel.geminiModel.value.isLoading)
+
+            assertEquals(null, viewModel.providerStates.value[CredentialProvider.OPENAI]?.validationSucceeded)
+            assertFalse(viewModel.providerStates.value[CredentialProvider.OPENAI]?.isValidating == true)
         } finally {
             Dispatchers.resetMain()
         }
@@ -346,15 +263,15 @@ class ProfileViewModelTest {
         try {
             val reply = CompletableDeferred<Result<Unit>>()
             val viewModel = networkViewModel(
-                dispatcher, validator = CredentialValidator { _, _, _ -> reply.await() }
+                dispatcher, validator = CredentialValidator { _, _ -> reply.await() }
             )
-            viewModel.validateCredential(CredentialProvider.GEMINI)
+            viewModel.validateCredential(CredentialProvider.OPENAI)
             runCurrent()
-            viewModel.deleteCredential(CredentialProvider.GEMINI)
+            viewModel.deleteCredential(CredentialProvider.OPENAI)
             runCurrent()
             reply.complete(Result.success(Unit))
             advanceUntilIdle()
-            assertEquals(ProviderCredentialState(), viewModel.providerStates.value[CredentialProvider.GEMINI])
+            assertEquals(ProviderCredentialState(), viewModel.providerStates.value[CredentialProvider.OPENAI])
         } finally {
             Dispatchers.resetMain()
         }
@@ -362,11 +279,10 @@ class ProfileViewModelTest {
 
     private fun networkViewModel(
         dispatcher: kotlinx.coroutines.CoroutineDispatcher,
-        validator: CredentialValidator = CredentialValidator { _, _, _ -> Result.success(Unit) },
-        catalog: ProviderModelCatalog = ProviderModelCatalog { Result.success(emptyList()) }
+        validator: CredentialValidator = CredentialValidator { _, _ -> Result.success(Unit) }
     ) = ProfileViewModel(
-        FakeCredentialStore().apply { saveCredential(CredentialProvider.GEMINI, "stored-key") },
-        validator, FakeModelStore(), catalog, EmptyCustomStore,
+        FakeCredentialStore().apply { saveCredential(CredentialProvider.OPENAI, "stored-key") },
+        validator, EmptyCustomStore,
         AnalysisQueueRepository(EmptyQueueDao), EmptyScheduler, dispatcher
     )
 
@@ -380,7 +296,7 @@ class ProfileViewModelTest {
             }
             val custom = FakeCustomStore(CustomApiConfiguration("Old", "https://old.example/analyze", "v1"))
             val viewModel = ProfileViewModel(
-                credentials, CredentialValidationService(), FakeModelStore(), ProviderModelCatalogService(),
+                credentials, CredentialValidationService(),
                 custom, AnalysisQueueRepository(EmptyQueueDao), EmptyScheduler, dispatcher
             )
             credentials.onDelete = {
@@ -414,7 +330,7 @@ class ProfileViewModelTest {
             credentials.onSave = { credentialWrites++ }
             custom.onSave = { customWrites++ }
             val viewModel = ProfileViewModel(
-                credentials, CredentialValidationService(), FakeModelStore(), ProviderModelCatalogService(),
+                credentials, CredentialValidationService(),
                 custom, AnalysisQueueRepository(EmptyQueueDao), EmptyScheduler, dispatcher
             )
             viewModel.updateCredentialDraft(CredentialProvider.OPENAI, "key")
@@ -432,22 +348,19 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun unexpectedCatalogAndValidationFailuresPublishErrorsAndStopLoading() = runTest {
+    fun unexpectedValidationFailuresPublishErrorsAndStopValidating() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         Dispatchers.setMain(dispatcher)
         try {
             val viewModel = networkViewModel(
                 dispatcher,
-                validator = CredentialValidator { _, _, _ -> error("validator failed") },
-                catalog = ProviderModelCatalog { error("catalog failed") }
+                validator = CredentialValidator { _, _ -> error("validator failed") }
             )
-            viewModel.refreshAvailableModels()
-            viewModel.validateCredential(CredentialProvider.GEMINI)
+            viewModel.validateCredential(CredentialProvider.OPENAI)
             advanceUntilIdle()
-            assertFalse(viewModel.geminiModel.value.isLoading)
-            assertTrue(viewModel.geminiModel.value.message != null)
-            assertEquals(false, viewModel.providerStates.value[CredentialProvider.GEMINI]?.validationSucceeded)
-            assertFalse(viewModel.providerStates.value[CredentialProvider.GEMINI]?.isValidating == true)
+            assertEquals("validator failed", viewModel.providerStates.value[CredentialProvider.OPENAI]?.validationMessage)
+            assertEquals(false, viewModel.providerStates.value[CredentialProvider.OPENAI]?.validationSucceeded)
+            assertFalse(viewModel.providerStates.value[CredentialProvider.OPENAI]?.isValidating == true)
         } finally {
             Dispatchers.resetMain()
         }
@@ -462,7 +375,7 @@ class ProfileViewModelTest {
             val credentials = FakeCredentialStore().apply { saveCredential(CredentialProvider.CUSTOM_API, "key") }
             val custom = FakeCustomStore(configuration).apply { failDelete = true }
             val viewModel = ProfileViewModel(
-                credentials, CredentialValidationService(), FakeModelStore(), ProviderModelCatalogService(),
+                credentials, CredentialValidationService(),
                 custom, AnalysisQueueRepository(EmptyQueueDao), EmptyScheduler, dispatcher
             )
             val draft = viewModel.customApiDraft.value
@@ -482,48 +395,42 @@ class ProfileViewModelTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         Dispatchers.setMain(dispatcher)
         try {
-            val saved = FakeCredentialStore().apply { saveCredential(CredentialProvider.GEMINI, "key") }
+            val saved = FakeCredentialStore().apply { saveCredential(CredentialProvider.OPENAI, "key") }
             val credentials = object : ProviderCredentialStore by saved {
                 override fun getCredential(provider: CredentialProvider): String = error("storage failed")
             }
             val viewModel = ProfileViewModel(
-                credentials, CredentialValidationService(), FakeModelStore(), ProviderModelCatalogService(),
+                credentials, CredentialValidationService(),
                 EmptyCustomStore, AnalysisQueueRepository(EmptyQueueDao), EmptyScheduler, dispatcher
             )
-            viewModel.validateCredential(CredentialProvider.GEMINI)
+            viewModel.validateCredential(CredentialProvider.OPENAI)
             advanceUntilIdle()
-            val state = viewModel.providerStates.value.getValue(CredentialProvider.GEMINI)
+            val state = viewModel.providerStates.value.getValue(CredentialProvider.OPENAI)
             assertTrue(state.isConfigured)
             assertFalse(state.isValidating)
             assertEquals(false, state.validationSucceeded)
-            assertTrue(saved.hasCredential(CredentialProvider.GEMINI))
+            assertTrue(saved.hasCredential(CredentialProvider.OPENAI))
         } finally {
             Dispatchers.resetMain()
         }
     }
 
     @Test
-    fun validationRequiresAModelAndTrimsTheKeyBeforeSending() = runTest {
+    fun validationTrimsTheKeyBeforeSending() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         Dispatchers.setMain(dispatcher)
         try {
             var received: String? = null
-            val viewModel = networkViewModel(dispatcher, validator = CredentialValidator { _, key, _ ->
+            val viewModel = networkViewModel(dispatcher, validator = CredentialValidator { provider, key ->
+                assertEquals(CredentialProvider.OPENAI, provider)
                 received = key
                 Result.success(Unit)
             })
-            viewModel.updateModelDraft("")
-            viewModel.validateCredential(CredentialProvider.GEMINI)
-            advanceUntilIdle()
-            assertEquals(null, received)
-            assertEquals(false, viewModel.providerStates.value[CredentialProvider.GEMINI]?.validationSucceeded)
-
-            viewModel.updateModelDraft(GeminiAnalysisProvider.DEFAULT_MODEL)
-            viewModel.updateCredentialDraft(CredentialProvider.GEMINI, "  new-key  ")
-            viewModel.validateCredential(CredentialProvider.GEMINI)
+            viewModel.updateCredentialDraft(CredentialProvider.OPENAI, "  new-key  ")
+            viewModel.validateCredential(CredentialProvider.OPENAI)
             advanceUntilIdle()
             assertEquals("new-key", received)
-            assertEquals(true, viewModel.providerStates.value[CredentialProvider.GEMINI]?.validationSucceeded)
+            assertEquals(true, viewModel.providerStates.value[CredentialProvider.OPENAI]?.validationSucceeded)
         } finally {
             Dispatchers.resetMain()
         }
@@ -539,7 +446,7 @@ class ProfileViewModelTest {
                     saveCredential(CredentialProvider.OPENAI, "old-key")
                 }
                 val viewModel = ProfileViewModel(
-                    credentials, CredentialValidationService(), FakeModelStore(), ProviderModelCatalogService(),
+                    credentials, CredentialValidationService(),
                     EmptyCustomStore, AnalysisQueueRepository(EmptyQueueDao), EmptyScheduler, dispatcher
                 )
                 val failAfterEdit = {
@@ -568,25 +475,22 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun ambiguousCredentialWriteDoesNotRollbackModelOrLoseDraft() = runTest {
+    fun ambiguousCredentialWriteReflectsStoredKeyWithoutLosingDraft() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         Dispatchers.setMain(dispatcher)
         try {
             val credentials = FakeCredentialStore().apply { onSave = { error("write outcome ambiguous") } }
-            val models = FakeModelStore()
             val viewModel = ProfileViewModel(
-                credentials, CredentialValidationService(), models, ProviderModelCatalogService(),
+                credentials, CredentialValidationService(),
                 EmptyCustomStore, AnalysisQueueRepository(EmptyQueueDao), EmptyScheduler, dispatcher
             )
-            viewModel.updateCredentialDraft(CredentialProvider.GEMINI, "submitted-key")
-            viewModel.updateModelDraft("gemini-new")
-            viewModel.saveCredential(CredentialProvider.GEMINI)
+            viewModel.updateCredentialDraft(CredentialProvider.OPENAI, "submitted-key")
+            viewModel.saveCredential(CredentialProvider.OPENAI)
             advanceUntilIdle()
 
-            assertEquals("gemini-new", models.getModel())
-            assertEquals("submitted-key", credentials.getCredential(CredentialProvider.GEMINI))
-            assertEquals("submitted-key", viewModel.credentialDrafts.value[CredentialProvider.GEMINI])
-            val state = viewModel.providerStates.value.getValue(CredentialProvider.GEMINI)
+            assertEquals("submitted-key", credentials.getCredential(CredentialProvider.OPENAI))
+            assertEquals("submitted-key", viewModel.credentialDrafts.value[CredentialProvider.OPENAI])
+            val state = viewModel.providerStates.value.getValue(CredentialProvider.OPENAI)
             assertTrue(state.isConfigured)
             assertTrue(state.saveState is SaveState.Error)
         } finally {
@@ -603,7 +507,7 @@ class ProfileViewModelTest {
                 val configuration = CustomApiConfiguration("Old", "https://old.example/analyze", "v1")
                 val custom = FakeCustomStore(configuration)
                 val viewModel = ProfileViewModel(
-                    FakeCredentialStore(), CredentialValidationService(), FakeModelStore(), ProviderModelCatalogService(),
+                    FakeCredentialStore(), CredentialValidationService(),
                     custom, AnalysisQueueRepository(EmptyQueueDao), EmptyScheduler, dispatcher
                 )
                 val newer = CustomApiDraft("Newer", "https://newer.example/analyze", "v3")
@@ -650,7 +554,7 @@ class ProfileViewModelTest {
                 }
             }
             val viewModel = ProfileViewModel(
-                credentials, CredentialValidationService(), FakeModelStore(), ProviderModelCatalogService(),
+                credentials, CredentialValidationService(),
                 custom, AnalysisQueueRepository(EmptyQueueDao), EmptyScheduler, dispatcher
             )
             val draft = viewModel.customApiDraft.value
@@ -685,12 +589,6 @@ class ProfileViewModelTest {
             values.remove(provider)
             onDelete?.invoke()
         }
-    }
-
-    private class FakeModelStore : ProviderModelConfigurationStore {
-        private var model = GeminiAnalysisProvider.DEFAULT_MODEL
-        override fun getModel() = model
-        override fun saveModel(modelId: String) { model = modelId }
     }
 
     private class FakeCustomStore(initial: CustomApiConfiguration?) : CustomApiConfigurationStore {

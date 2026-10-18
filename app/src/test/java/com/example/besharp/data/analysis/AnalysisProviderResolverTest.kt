@@ -21,25 +21,17 @@ class AnalysisProviderResolverTest {
         override fun saveConfiguration(configuration: CustomApiConfiguration) = Unit
         override fun deleteConfiguration() = Unit
     }
-    private val models = object : ProviderModelConfigurationStore {
-        override fun getModel() = "gemini-current"
-        override fun saveModel(modelId: String) = Unit
-    }
-    private val resolver = AnalysisProviderResolver(credentials, custom, models)
+    private val resolver = AnalysisProviderResolver(credentials, custom)
 
     @Test
-    fun selectionUsesGeminiModelAndFixedOpenAiCapability() {
-        assertEquals(
-            "gemini-current",
-            resolver.create(AnalysisProviderResolver.GEMINI_PROVIDER_ID).descriptor.modelId
-        )
+    fun selectionUsesFixedOpenAiProvenanceModel() {
         assertEquals(
             OpenAiProvenanceProvider.MODEL_ID,
-            resolver.create(AnalysisProviderResolver.OPENAI_PROVIDER_ID).descriptor.modelId
+            resolver.create(AnalysisProviderResolver.OPENAI_PROVENANCE_PROVIDER_ID).descriptor.modelId
         )
         assertEquals(
             AnalysisProviderResolver.OPENAI_PROVENANCE_PROVIDER_ID,
-            resolver.create(AnalysisProviderResolver.OPENAI_PROVIDER_ID).descriptor.providerId
+            resolver.create(AnalysisProviderResolver.OPENAI_PROVENANCE_PROVIDER_ID).descriptor.providerId
         )
     }
 
@@ -48,47 +40,39 @@ class AnalysisProviderResolverTest {
         val secretStore = object : ProviderCredentialStore by credentials {
             override fun getCredential(provider: CredentialProvider): String = error("No debe descifrar claves")
         }
-        val descriptions = AnalysisProviderResolver(secretStore, custom, models)
+        val descriptions = AnalysisProviderResolver(secretStore, custom)
         assertEquals(
-            resolver.create(AnalysisProviderResolver.GEMINI_PROVIDER_ID).descriptor,
-            descriptions.describe(AnalysisProviderResolver.GEMINI_PROVIDER_ID)
-        )
-        assertEquals(
-            resolver.create(AnalysisProviderResolver.OPENAI_PROVIDER_ID).descriptor,
-            descriptions.describe(AnalysisProviderResolver.OPENAI_PROVIDER_ID)
+            resolver.create(AnalysisProviderResolver.OPENAI_PROVENANCE_PROVIDER_ID).descriptor,
+            descriptions.describe(AnalysisProviderResolver.OPENAI_PROVENANCE_PROVIDER_ID)
         )
     }
 
     @Test
-    fun officialProvenanceProvidersDeclareTheirOriginalFileLimits() {
-        val gemini = resolver.create(AnalysisProviderResolver.GEMINI_PROVIDER_ID)
-            as OriginalMediaAnalysisProvider
-        val openAi = resolver.create(AnalysisProviderResolver.OPENAI_PROVIDER_ID)
+    fun officialProvenanceProviderDeclaresItsOriginalFileLimits() {
+        val openAi = resolver.create(AnalysisProviderResolver.OPENAI_PROVENANCE_PROVIDER_ID)
             as OriginalMediaAnalysisProvider
 
-        assertEquals(setOf("image/png", "image/jpeg", "image/webp"), gemini.supportedMimeTypes)
-        assertEquals(GeminiAnalysisProvider.MAX_INPUT_BYTES, gemini.maxInputBytes)
         assertEquals(setOf("image/png", "image/jpeg", "image/webp"), openAi.supportedMimeTypes)
         assertEquals(OriginalMediaInput.MAX_SIZE_BYTES, openAi.maxInputBytes)
     }
 
     @Test
-    fun persistedGeminiJobKeepsItsOriginalModel() {
+    fun persistedOpenAiJobUsesFixedProvenanceModel() {
         val provider = resolver.create(
             AnalysisJobEntity(
                 jobId = 1,
                 assessmentId = 1,
-                providerId = AnalysisProviderResolver.GEMINI_PROVIDER_ID,
-                providerName = "Gemini",
-                modelId = "gemini-snapshot",
+                providerId = AnalysisProviderResolver.OPENAI_PROVENANCE_PROVIDER_ID,
+                providerName = "OpenAI",
+                modelId = OpenAiProvenanceProvider.MODEL_ID,
                 executionId = "execution",
-                destinationFingerprint = "google-gemini:gemini-snapshot",
+                destinationFingerprint = "${AnalysisProviderResolver.OPENAI_PROVENANCE_PROVIDER_ID}:${OpenAiProvenanceProvider.MODEL_ID}",
                 status = AnalysisJobStatus.QUEUED,
                 createdAt = 1
             )
         )
 
-        assertEquals("gemini-snapshot", provider.descriptor.modelId)
+        assertEquals(OpenAiProvenanceProvider.MODEL_ID, provider.descriptor.modelId)
         assertTrue(provider is OriginalMediaAnalysisProvider)
         assertEquals(AnalysisInputType.ORIGINAL_FILE, provider.descriptor.inputType)
     }
@@ -107,7 +91,7 @@ class AnalysisProviderResolverTest {
                 return "token-b"
             }
         }
-        val resolver = AnalysisProviderResolver(secretStore, configurationStore, models)
+        val resolver = AnalysisProviderResolver(secretStore, configurationStore)
 
         for (useSnapshot in listOf(false, true)) {
             val failure = runCatching {
@@ -137,7 +121,7 @@ class AnalysisProviderResolverTest {
                 return "token-b"
             }
         }
-        val resolver = AnalysisProviderResolver(secretStore, configurationStore, models)
+        val resolver = AnalysisProviderResolver(secretStore, configurationStore)
 
         for (useSnapshot in listOf(false, true)) {
             current = snapshot

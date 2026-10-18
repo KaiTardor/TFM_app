@@ -9,12 +9,10 @@ import com.google.gson.JsonParser
 
 class AnalysisProviderResolver(
     private val credentialStore: ProviderCredentialStore,
-    private val customApiConfigurationStore: CustomApiConfigurationStore,
-    private val modelConfigurationStore: ProviderModelConfigurationStore
+    private val customApiConfigurationStore: CustomApiConfigurationStore
 ) {
     // Mostrar destinos y pedir consentimiento no requiere descifrar credenciales.
     fun describe(providerId: String): com.example.besharp.domain.model.ProviderDescriptor = when (providerId) {
-        GEMINI_PROVIDER_ID -> GeminiAnalysisProvider.describe(modelConfigurationStore.getModel())
         OPENAI_PROVIDER_ID, OPENAI_PROVENANCE_PROVIDER_ID -> OpenAiProvenanceProvider.describe()
         else -> {
             val configuration = customApiConfigurationStore.getConfiguration()
@@ -25,12 +23,6 @@ class AnalysisProviderResolver(
     }
 
     fun create(providerId: String): AnalysisProvider = when (providerId) {
-        GEMINI_PROVIDER_ID -> GeminiAnalysisProvider(
-            credentialStore.getCredential(CredentialProvider.GEMINI)
-                ?: error("Gemini no tiene credencial"),
-            modelConfigurationStore.getModel()
-        )
-
         OPENAI_PROVIDER_ID, OPENAI_PROVENANCE_PROVIDER_ID -> OpenAiProvenanceProvider(
             credentialStore.getCredential(CredentialProvider.OPENAI)
                 ?: error("OpenAI no tiene credencial")
@@ -48,17 +40,14 @@ class AnalysisProviderResolver(
 
     // Un trabajo pendiente debe usar la configuracion con la que se creo.
     fun create(job: AnalysisJobEntity): AnalysisProvider {
-        when {
-            job.providerId == OPENAI_PROVENANCE_PROVIDER_ID -> return OpenAiProvenanceProvider(
+        if (job.providerId == OPENAI_PROVENANCE_PROVIDER_ID) {
+            return OpenAiProvenanceProvider(
                 credentialStore.getCredential(CredentialProvider.OPENAI)
                     ?: error("OpenAI no tiene credencial")
             )
-            job.providerId == GEMINI_PROVIDER_ID ||
-                job.providerId.startsWith("$GEMINI_PROVIDER_ID:") -> return GeminiAnalysisProvider(
-                credentialStore.getCredential(CredentialProvider.GEMINI)
-                    ?: error("Gemini no tiene credencial"),
-                job.modelId
-            )
+        }
+        check(job.providerId.startsWith(CustomApiConfiguration.CUSTOM_PROVIDER_PREFIX)) {
+            "Proveedor no compatible: ${job.providerId}"
         }
         val endpoint = job.customEndpointUrl
             ?: error("El trabajo custom no contiene una instantanea del endpoint")
@@ -93,7 +82,6 @@ class AnalysisProviderResolver(
     }
 
     companion object {
-        const val GEMINI_PROVIDER_ID = "google-gemini"
         const val OPENAI_PROVIDER_ID = "openai"
         const val OPENAI_PROVENANCE_PROVIDER_ID = OpenAiProvenanceProvider.PROVIDER_ID
     }

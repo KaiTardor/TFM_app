@@ -133,8 +133,6 @@ fun BeSharpApp(
     val profileViewModel: ProfileViewModel = viewModel(
         factory = ProfileViewModelFactory(
             container.credentialStore,
-            container.providerModelConfigurationStore,
-            container.providerModelCatalogService,
             container.customApiConfigurationStore,
             container.analysisQueueRepository,
             container.analysisWorkScheduler

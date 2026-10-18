@@ -74,8 +74,8 @@ restricción única sobre `imageUri`.
 ## analysis_jobs
 
 Cada fila representa una capacidad concreta de un proveedor dentro de una
-evaluacion. Gemini y OpenAI Content Provenance crean un trabajo de procedencia
-independiente por proveedor.
+evaluacion. OpenAI Content Provenance crea un trabajo de procedencia; la API
+personalizada aporta estimaciones visuales o señales reportadas mediante su contrato.
 
 | Campo | Tipo | Descripcion |
 |---|---|---|
@@ -141,7 +141,7 @@ Salida normalizada 1:1 de un trabajo completado.
 
 Un resultado individual no es la resolucion final de la imagen.
 
-Gemini y OpenAI Content Provenance guardan `syntheticProbability = null`.
+OpenAI Content Provenance guarda `syntheticProbability = null`.
 La API personalizada puede devolver un porcentaje visual, pero no se calcula
 una media entre proveedores. Solo resultados de capacidades visuales o del
 futuro clasificador local alimentan la rama de estimaciones del motor.
@@ -174,20 +174,19 @@ Niveles de verificacion:
 - `VISUAL_ESTIMATE`.
 
 Los niveles describen cómo se obtuvo la evidencia, no su certeza absoluta.
-Gemini y las señales de procedencia custom son `PROVIDER_REPORTED`. Las señales
+Las señales de procedencia custom son `PROVIDER_REPORTED`. Las señales
 del endpoint específico de OpenAI son `REMOTE_VERIFIED`, con cobertura limitada
-a sus señales compatibles. `NOT_CHECKED` de Gemini no genera una fila de señal.
+a sus señales compatibles.
 
 La política de resolución actual tiene versión 2. Puede confirmar generación
 mediante evidencia local o remota verificada; las señales reportadas producen
 como máximo posible contenido sintético. No detectar señales nunca demuestra
-autenticidad. El modelo local y la verificación C2PA local no están integrados.
+autenticidad. El modelo local sigue pendiente de entrenamiento y de definir su
+contrato de integración. Ni ese modelo ni la verificación C2PA local están integrados.
 
 ## Entradas de imagen
 
 - La API custom visual recibe una copia JPEG de hasta 1600 px sin EXIF.
-- Gemini recibe un temporal privado del archivo original PNG, JPEG o WebP,
-  limitado a 14 MiB para su codificacion inline.
 - OpenAI Content Provenance recibe un temporal privado del archivo original,
   limitado a 50 MiB y eliminado siempre al terminar.
 - Los proveedores normalizados de una evaluacion reutilizan un JPEG privado. El
@@ -199,8 +198,7 @@ La limpieza inicial se realiza en IO y se coordina con un bloqueo de
 inicialización que comparten los preparadores. Estos esperan a que termine
 antes de crear copias, evitando que una limpieza asíncrona borre archivos nuevos.
 - Los analisis intensivos se serializan para limitar picos de bitmap, Base64 y red.
-- OpenAI transmite el original por `RequestBody` basado en fichero. Gemini carga
-  como maximo 14 MiB para generar el contenido Base64 requerido por su API.
+- OpenAI transmite el original por `RequestBody` basado en fichero.
 
 Los fallos de acceso al original usan `SOURCE_UNAVAILABLE`; los fallos de la copia
 privada usan `LOCAL_STORAGE`. No se reintentan como indisponibilidad remota.
@@ -213,8 +211,6 @@ descartan silenciosamente. Los errores de parser no adjuntan el cuerpo remoto.
 
 - API keys y tokens: AES/GCM con clave no exportable en Android Keystore.
 - Configuracion no sensible: SharedPreferences.
-- Modelo oficial Gemini seleccionado: SharedPreferences
-  `besharp_provider_models`; cada trabajo guarda despues su propio snapshot.
 - Consentimiento remoto version 3: ligado a proveedor, destino, capacidad y tipo
   de entrada. Distingue originales de entradas normalizadas.
 - Temporales de procedencia: cache privada, borrada al finalizar o fallar.
@@ -277,7 +273,7 @@ el fallback decodifica la copia privada y no vuelve a abrir el original.
 
 Los ViewModels exponen `StateFlow` y la UI observa con ciclo de vida. La selección
 de análisis y el estado del calendario usan `SavedStateHandle`; los secretos no
-se guardan ahí. Catálogo y validación llevan una versión de configuración para
+se guardan ahí. Las validaciones llevan una versión de configuración para
 ignorar respuestas obsoletas, incluso cuando llega una petición anterior
 después de otra más reciente.
 

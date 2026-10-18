@@ -4,7 +4,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
@@ -23,10 +22,6 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -69,7 +64,6 @@ internal fun ProviderCredentialsScreen(
 ) {
     val providerStates by viewModel.providerStates.collectAsStateWithLifecycle()
     val credentialDrafts by viewModel.credentialDrafts.collectAsStateWithLifecycle()
-    val geminiModel by viewModel.geminiModel.collectAsStateWithLifecycle()
     val customApiConfiguration by viewModel.customApiConfiguration.collectAsStateWithLifecycle()
     val customApiDraft by viewModel.customApiDraft.collectAsStateWithLifecycle()
     val customApiSaveState by viewModel.customApiSaveState.collectAsStateWithLifecycle()
@@ -85,38 +79,16 @@ internal fun ProviderCredentialsScreen(
     ) {
         SettingsSubpageHeader(stringResource(R.string.settings_providers), onBack)
 
-        val officialProviders = CredentialProvider.entries.filter {
-            it != CredentialProvider.CUSTOM_API
-        }
-        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-            val card: @Composable (CredentialProvider, Modifier) -> Unit = { provider, modifier ->
-                ProviderCredentialCard(
-                    provider = provider,
-                    state = providerStates[provider] ?: ProviderCredentialState(),
-                    credential = credentialDrafts[provider].orEmpty(),
-                    model = geminiModel,
-                    onCredentialChange = { viewModel.updateCredentialDraft(provider, it) },
-                    onModelChange = viewModel::updateModelDraft,
-                    onRefreshModels = viewModel::refreshAvailableModels,
-                    onSave = { viewModel.saveCredential(provider) },
-                    onValidate = { viewModel.validateCredential(provider) },
-                    onDelete = { viewModel.deleteCredential(provider) },
-                    modifier = modifier
-                )
-            }
-            if (maxWidth >= 680.dp) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    officialProviders.forEach { provider -> card(provider, Modifier.weight(1f)) }
-                }
-            } else {
-                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    officialProviders.forEach { provider -> card(provider, Modifier.fillMaxWidth()) }
-                }
-            }
-        }
+        ProviderCredentialCard(
+            provider = CredentialProvider.OPENAI,
+            state = providerStates[CredentialProvider.OPENAI] ?: ProviderCredentialState(),
+            credential = credentialDrafts[CredentialProvider.OPENAI].orEmpty(),
+            onCredentialChange = { viewModel.updateCredentialDraft(CredentialProvider.OPENAI, it) },
+            onSave = { viewModel.saveCredential(CredentialProvider.OPENAI) },
+            onValidate = { viewModel.validateCredential(CredentialProvider.OPENAI) },
+            onDelete = { viewModel.deleteCredential(CredentialProvider.OPENAI) },
+            modifier = Modifier.fillMaxWidth()
+        )
 
         CustomApiConfigurationCard(
             configuration = customApiConfiguration,
@@ -297,16 +269,13 @@ private fun CustomApiConfigurationCard(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ProviderCredentialCard(
     provider: CredentialProvider,
     state: ProviderCredentialState,
     credential: String,
-    model: GeminiModelState,
     onCredentialChange: (String) -> Unit,
-    onModelChange: (String) -> Unit,
-    onRefreshModels: () -> Unit,
     onSave: () -> Unit,
     onValidate: () -> Unit,
     onDelete: () -> Unit,
@@ -375,18 +344,6 @@ private fun ProviderCredentialCard(
                 }
             )
 
-            if (provider == CredentialProvider.GEMINI) {
-                Spacer(Modifier.height(8.dp))
-                ModelDropdown(
-                    selectedModel = model.modelId,
-                    availableModels = model.models,
-                    loading = model.isLoading,
-                    message = model.message,
-                    onSelected = onModelChange,
-                    onRefresh = onRefreshModels
-                )
-            }
-
             Spacer(Modifier.height(10.dp))
             if (provider == CredentialProvider.OPENAI) {
                 TextButton(onClick = { uriHandler.openUri("https://openai.com/verify/") }) {
@@ -399,8 +356,7 @@ private fun ProviderCredentialCard(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Button(
-                    enabled = (provider != CredentialProvider.GEMINI || model.modelId.isNotBlank()) &&
-                        (credential.isNotBlank() || state.isConfigured) &&
+                    enabled = (credential.isNotBlank() || state.isConfigured) &&
                         state.saveState !is SaveState.Saving,
                     onClick = onSave,
                     shape = RectangleShape
@@ -473,77 +429,6 @@ private fun ProviderCredentialCard(
                     Text(stringResource(R.string.action_cancel).uppercase())
                 }
             }
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Suppress("DEPRECATION")
-@Composable
-private fun ModelDropdown(
-    selectedModel: String,
-    availableModels: List<String>,
-    loading: Boolean,
-    message: String?,
-    onSelected: (String) -> Unit,
-    onRefresh: () -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val options = if (availableModels.isNotEmpty()) {
-        availableModels
-    } else {
-        listOf(selectedModel).filter(String::isNotBlank)
-    }
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = {
-            expanded = !expanded
-            if (availableModels.isEmpty() && !loading) onRefresh()
-        }
-    ) {
-        OutlinedTextField(
-            value = selectedModel,
-            onValueChange = {},
-            readOnly = true,
-            modifier = Modifier
-                .menuAnchor()
-                .fillMaxWidth(),
-            label = { Text(stringResource(R.string.providers_model)) },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            singleLine = true
-        )
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
-            options.forEach { model ->
-                DropdownMenuItem(
-                    text = { Text(model) },
-                    onClick = {
-                        onSelected(model)
-                        expanded = false
-                    }
-                )
-            }
-        }
-    }
-    OutlinedButton(
-        enabled = !loading,
-        onClick = onRefresh,
-        shape = RectangleShape
-    ) {
-        if (loading) {
-            CircularProgressIndicator(modifier = Modifier.height(16.dp), strokeWidth = 2.dp)
-            Text(" ${stringResource(R.string.providers_loading_models)}")
-        } else {
-            Text(stringResource(R.string.providers_load_models))
-        }
-    }
-    message?.let {
-        Text(
-            text = it,
-            color = MaterialTheme.colorScheme.error,
-            style = MaterialTheme.typography.bodySmall
         )
     }
 }

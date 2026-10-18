@@ -21,10 +21,10 @@ toda la aplicacion: capturas sin callback con recuperar/descartar, registro fall
 y trabajo interrumpido sin reenvio automatico. Las pruebas instrumentales conservadas
 cubren estos casos y las transacciones Room; compilarlas no equivale a ejecutarlas.
 
-## Decisiones de producto
+## Modelo local
 
-- Decidir si se mantiene Gemini, sin verificador documentado util en la API estandar.
-- Esperar al entrenamiento y contrato del modelo local.
+El modelo local sigue en entrenamiento. Quedan pendientes completar ese proceso
+y definir su contrato de integracion antes de incorporarlo a la aplicacion.
 
 No se requiere Hilt, mas modulos ni C2PA local dentro del alcance actual.
 Consultar el [README](README.md) para funcionalidades y pruebas esenciales.

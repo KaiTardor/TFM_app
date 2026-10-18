@@ -82,7 +82,7 @@
     <string name="privacy_local_storage_title">3. ALMACENAMIENTO LOCAL</string>
     <string name="privacy_local_storage_body">BeSharp utiliza una base de datos local (Room) en el dispositivo del usuario para almacenar referencias de las fotos, trabajos y resultados de autenticidad por modelo. Los archivos multimedia originales permanecen inalterados en el sistema de archivos del sistema operativo, prohibiéndose expresamente a la aplicación la modificación, supresión o duplicación no autorizada de los mismos.</string>
     <string name="privacy_external_processing_title">4. PROCESAMIENTO EXTERNO MEDIANTE IA</string>
-    <string name="privacy_external_processing_body">Antes del primer análisis remoto BeSharp solicita consentimiento explícito e identifica los proveedores seleccionados. Gemini y OpenAI Content Provenance reciben temporalmente el archivo original para conservar C2PA, SynthID y metadatos. La API personalizada recibe una copia JPEG reducida y sin EXIF. OpenAI Content Provenance no es elegible para Zero Data Retention. Cada servicio aplica sus propias condiciones, políticas de conservación y cuotas. Los resultados se almacenan exclusivamente en Room dentro del dispositivo.</string>
+    <string name="privacy_external_processing_body">Antes del primer análisis remoto BeSharp solicita consentimiento explícito e identifica los proveedores seleccionados. OpenAI Content Provenance recibe temporalmente el archivo original para conservar C2PA, SynthID y metadatos. La API personalizada recibe una copia JPEG reducida y sin EXIF. OpenAI Content Provenance no es elegible para Zero Data Retention. Cada servicio aplica sus propias condiciones, políticas de conservación y cuotas. Los resultados se almacenan exclusivamente en Room dentro del dispositivo.</string>
     <string name="privacy_confidentiality_title">5. CONFIDENCIALIDAD Y CESIÓN A TERCEROS</string>
     <string name="privacy_confidentiality_body">Sin perjuicio de la transmisión técnica estipulada en la Cláusula 4, BeSharp se compromete expresamente a no ceder,comercializar, alquilar ni transferir a título gratuito u oneroso la información personal o los archivos del usuario a terceras partes bajo ninguna circunstancia. El software subyacente opera primariamente en un entorno local y cerrado para el usuario.</string>
     <string name="privacy_user_rights_title">6. DERECHOS DEL USUARIO</string>
@@ -122,13 +122,11 @@
     <string name="settings_analysis_info">CÓMO FUNCIONA BESHARP</string>
     <string name="settings_analysis_info_description">Proveedores, modelos, privacidad y significado de los resultados</string>
     <string name="info_credentials_title">CREDENCIALES Y MODELOS</string>
-    <string name="info_credentials_body">Las API keys se cifran en este dispositivo. El modelo de Gemini se puede cambiar sin sustituir la clave. OpenAI Content Provenance no requiere seleccionar un modelo.</string>
+    <string name="info_credentials_body">Las API keys se cifran en este dispositivo. OpenAI Content Provenance no requiere seleccionar un modelo. La API personalizada permite configurar su destino, modelo y token.</string>
     <string name="info_processing_title">QUÉ SE ENVÍA</string>
-    <string name="info_processing_body">Gemini y OpenAI Content Provenance reciben temporalmente el archivo original para conservar señales de procedencia. La API personalizada usa una copia JPEG reducida y sin EXIF.</string>
+    <string name="info_processing_body">OpenAI Content Provenance recibe temporalmente el archivo original para conservar señales de procedencia. La API personalizada usa una copia JPEG reducida y sin EXIF.</string>
     <string name="info_results_title">CÓMO INTERPRETAR EL RESULTADO</string>
-    <string name="info_results_body">Gemini reporta lo que indican sus herramientas disponibles, pero no equivale a una verificación independiente. OpenAI Content Provenance se trata como verificación remota. No detectar señales nunca demuestra autenticidad.</string>
-    <string name="info_models_title">MODELOS</string>
-    <string name="info_models_body">BeSharp guarda el modelo de Gemini como parte de cada trabajo. Si Gemini retira un modelo, configura otro compatible con entrada de imagen y valida la conexión. OpenAI usa la capacidad fija Content Provenance.</string>
+    <string name="info_results_body">OpenAI Content Provenance se trata como verificación remota. Las señales de la API personalizada son reportadas, no una verificación independiente. No detectar señales nunca demuestra autenticidad.</string>
     <string name="providers_custom_api">API PERSONALIZADA</string>
     <string name="providers_not_configured">SIN CONFIGURAR</string>
     <string name="providers_configured">CONFIGURADA</string>
@@ -176,7 +174,7 @@
     <string name="analysis_remote_consent_title">ENVÍO A PROVEEDORES EXTERNOS</string>
     <string name="analysis_remote_consent_recipients">Se enviará una copia de las imágenes a: %1$s.</string>
     <string name="analysis_remote_consent_copy">La copia se reduce a un máximo de 1600 px, se convierte a JPEG y no contiene metadatos EXIF.</string>
-    <string name="analysis_remote_consent_original">Gemini u OpenAI Content Provenance recibirán temporalmente el archivo original, incluidos sus metadatos y credenciales de contenido.</string>
+    <string name="analysis_remote_consent_original">OpenAI Content Provenance recibirá temporalmente el archivo original, incluidos sus metadatos y credenciales de contenido.</string>
     <string name="analysis_remote_consent_storage">BeSharp guarda los resultados solo en este dispositivo. Cada proveedor aplica sus propias condiciones y política de datos.</string>
     <string name="analysis_remote_consent_disclaimer">Los resultados son estimaciones y no demuestran que una imagen sea auténtica o sintética.</string>
     <string name="analysis_remote_consent_save_failed">No se pudo confirmar el consentimiento. Revisa la selección e inténtalo de nuevo.</string>

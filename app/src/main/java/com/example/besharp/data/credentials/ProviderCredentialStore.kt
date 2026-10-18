@@ -4,7 +4,6 @@ enum class CredentialProvider(
     val storageKey: String,
     val displayName: String
 ) {
-    GEMINI("gemini", "Gemini"),
     OPENAI("openai", "OpenAI"),
     CUSTOM_API("custom_api", "API personalizada")
 }

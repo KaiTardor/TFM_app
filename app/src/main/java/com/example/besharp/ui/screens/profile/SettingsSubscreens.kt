@@ -329,7 +329,6 @@ internal fun AnalysisInfoScreen(
         InfoSection(R.string.info_credentials_title, R.string.info_credentials_body)
         InfoSection(R.string.info_processing_title, R.string.info_processing_body)
         InfoSection(R.string.info_results_title, R.string.info_results_body)
-        InfoSection(R.string.info_models_title, R.string.info_models_body)
     }
 }
 

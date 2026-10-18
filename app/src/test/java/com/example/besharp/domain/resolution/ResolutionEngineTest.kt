@@ -95,7 +95,7 @@ class ResolutionEngineTest {
             type = EvidenceType.SYNTHID_WATERMARK,
             outcome = EvidenceOutcome.DETECTED,
             verificationLevel = VerificationLevel.PROVIDER_REPORTED,
-            source = "Gemini",
+            source = "Custom",
             claim = EvidenceClaim.AI_GENERATION
         )
 

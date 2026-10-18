@@ -33,8 +33,6 @@ import com.example.besharp.R
 import com.example.besharp.data.analysis.AnalysisProviderResolver
 import com.example.besharp.data.analysis.CustomApiConfiguration
 import com.example.besharp.data.analysis.CustomApiConfigurationStore
-import com.example.besharp.data.analysis.GeminiAnalysisProvider
-import com.example.besharp.data.analysis.ProviderModelConfigurationStore
 import com.example.besharp.data.credentials.CredentialProvider
 import com.example.besharp.data.credentials.ProviderCredentialStore
 import com.example.besharp.data.local.database.AppDatabase
@@ -168,10 +166,6 @@ class PendingCameraCaptureTest {
             override fun saveConfiguration(configuration: CustomApiConfiguration) = Unit
             override fun deleteConfiguration() = Unit
         }
-        val models = object : ProviderModelConfigurationStore {
-            override fun getModel() = GeminiAnalysisProvider.DEFAULT_MODEL
-            override fun saveModel(modelId: String) = Unit
-        }
         val scheduler = object : AnalysisScheduler {
             override suspend fun enqueue(jobId: Long) = Unit
             override suspend fun cancel(jobId: Long) = Unit
@@ -184,7 +178,7 @@ class PendingCameraCaptureTest {
         }
         val model = AnalysisPreparationViewModel(
             credentials, custom, AnalysisQueueRepository(database.analysisQueueDao()),
-            AnalysisHistoryRepository(database.analysisQueueDao()), AnalysisProviderResolver(credentials, custom, models),
+            AnalysisHistoryRepository(database.analysisQueueDao()), AnalysisProviderResolver(credentials, custom),
             scheduler, RemoteAnalysisConsentStore(context)
         )
         owner.put("analysis", model)
