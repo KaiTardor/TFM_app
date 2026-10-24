@@ -542,8 +542,8 @@ class AnalysisPreparationViewModelTest {
         val repository = AnalysisQueueRepository(dao)
         val credentials = object : ProviderCredentialStore {
             override fun hasCredential(provider: CredentialProvider) = provider in configuredProviders
-            override fun getCredential(provider: CredentialProvider): String? =
-                if (provider in configuredProviders) "test-credential" else null
+            override fun getCredential(provider: CredentialProvider): String =
+                error("La preparacion no debe descifrar credenciales")
             override fun saveCredential(provider: CredentialProvider, credential: String) = Unit
             override fun deleteCredential(provider: CredentialProvider) = Unit
         }

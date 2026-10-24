@@ -13,28 +13,12 @@ class AnalysisProviderResolver(
 ) {
     // Mostrar destinos y pedir consentimiento no requiere descifrar credenciales.
     fun describe(providerId: String): com.example.besharp.domain.model.ProviderDescriptor = when (providerId) {
-        OPENAI_PROVIDER_ID, OPENAI_PROVENANCE_PROVIDER_ID -> OpenAiProvenanceProvider.describe()
+        OPENAI_PROVENANCE_PROVIDER_ID -> OpenAiProvenanceProvider.describe()
         else -> {
             val configuration = customApiConfigurationStore.getConfiguration()
                 ?: error("La API personalizada no esta configurada")
             check(configuration.providerId() == providerId) { "El destino custom ha cambiado" }
             CustomApiAnalysisProvider.describe(configuration)
-        }
-    }
-
-    fun create(providerId: String): AnalysisProvider = when (providerId) {
-        OPENAI_PROVIDER_ID, OPENAI_PROVENANCE_PROVIDER_ID -> OpenAiProvenanceProvider(
-            credentialStore.getCredential(CredentialProvider.OPENAI)
-                ?: error("OpenAI no tiene credencial")
-        )
-
-        else -> if (providerId.startsWith(CustomApiConfiguration.CUSTOM_PROVIDER_PREFIX)) {
-            val configuration = customApiConfigurationStore.getConfiguration()
-                ?: error("La API personalizada no esta configurada")
-            check(configuration.providerId() == providerId) { "El destino custom ha cambiado" }
-            CustomApiAnalysisProvider(configuration, customCredential(configuration.destinationFingerprint()))
-        } else {
-            error("Proveedor no compatible: $providerId")
         }
     }
 
@@ -82,7 +66,6 @@ class AnalysisProviderResolver(
     }
 
     companion object {
-        const val OPENAI_PROVIDER_ID = "openai"
         const val OPENAI_PROVENANCE_PROVIDER_ID = OpenAiProvenanceProvider.PROVIDER_ID
     }
 }

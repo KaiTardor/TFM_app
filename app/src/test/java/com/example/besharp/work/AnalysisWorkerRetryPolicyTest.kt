@@ -2,7 +2,6 @@ package com.example.besharp.work
 
 import com.example.besharp.data.analysis.AnalysisErrorCategory
 import com.example.besharp.data.analysis.AnalysisProviderException
-import com.example.besharp.data.analysis.AnalysisProviderResolver
 import com.example.besharp.data.analysis.CustomApiConfiguration
 import com.example.besharp.data.analysis.OpenAiProvenanceProvider
 import java.io.IOException
@@ -23,7 +22,7 @@ class AnalysisWorkerRetryPolicyTest {
 
         assertTrue(AnalysisExecutionPolicy.shouldRetryRequest(customProviderId, networkFailure))
         assertTrue(AnalysisExecutionPolicy.shouldRetryRequest(OpenAiProvenanceProvider.PROVIDER_ID, networkFailure))
-        assertFalse(AnalysisExecutionPolicy.shouldRetryRequest(AnalysisProviderResolver.OPENAI_PROVIDER_ID, networkFailure))
+        assertFalse(AnalysisExecutionPolicy.shouldRetryRequest("unsupported-provider", networkFailure))
     }
 
     @Test

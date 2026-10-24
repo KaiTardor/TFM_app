@@ -65,8 +65,6 @@ class AnalysisHistoryRepository(
             providerName = job.providerName,
             status = job.status,
             errorMessage = job.errorMessage,
-            errorCategory = job.errorCategory,
-            httpStatus = job.httpStatus,
             result = if (resultEntity != null && descriptor != null) {
                 AuthenticityResult(
                     provider = descriptor,

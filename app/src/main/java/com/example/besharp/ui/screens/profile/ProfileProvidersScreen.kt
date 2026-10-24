@@ -55,7 +55,6 @@ import com.example.besharp.data.credentials.CredentialProvider
 import com.example.besharp.ui.theme.appBackgroundBrush
 import com.example.besharp.ui.components.SettingsSubpageHeader
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ProviderCredentialsScreen(
     innerPadding: PaddingValues,
@@ -79,8 +78,7 @@ internal fun ProviderCredentialsScreen(
     ) {
         SettingsSubpageHeader(stringResource(R.string.settings_providers), onBack)
 
-        ProviderCredentialCard(
-            provider = CredentialProvider.OPENAI,
+        OpenAiCredentialCard(
             state = providerStates[CredentialProvider.OPENAI] ?: ProviderCredentialState(),
             credential = credentialDrafts[CredentialProvider.OPENAI].orEmpty(),
             onCredentialChange = { viewModel.updateCredentialDraft(CredentialProvider.OPENAI, it) },
@@ -271,8 +269,7 @@ private fun CustomApiConfigurationCard(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ProviderCredentialCard(
-    provider: CredentialProvider,
+private fun OpenAiCredentialCard(
     state: ProviderCredentialState,
     credential: String,
     onCredentialChange: (String) -> Unit,
@@ -282,8 +279,8 @@ private fun ProviderCredentialCard(
     modifier: Modifier = Modifier
 ) {
     val uriHandler = LocalUriHandler.current
-    var showCredential by remember(provider) { mutableStateOf(false) }
-    var confirmDelete by remember(provider) { mutableStateOf(false) }
+    var showCredential by remember { mutableStateOf(false) }
+    var confirmDelete by remember { mutableStateOf(false) }
     LaunchedEffect(state.saveState) {
         if (state.saveState is SaveState.Success) showCredential = false
     }
@@ -300,7 +297,7 @@ private fun ProviderCredentialCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(provider.displayName.uppercase(), fontWeight = FontWeight.Bold)
+                Text(CredentialProvider.OPENAI.displayName.uppercase(), fontWeight = FontWeight.Bold)
                 Text(
                     text = stringResource(
                         if (state.isConfigured) R.string.providers_configured
@@ -345,12 +342,10 @@ private fun ProviderCredentialCard(
             )
 
             Spacer(Modifier.height(10.dp))
-            if (provider == CredentialProvider.OPENAI) {
-                TextButton(onClick = { uriHandler.openUri("https://openai.com/verify/") }) {
-                    Text(stringResource(R.string.providers_open_openai_verifier))
-                }
-                Spacer(Modifier.height(10.dp))
+            TextButton(onClick = { uriHandler.openUri("https://openai.com/verify/") }) {
+                Text(stringResource(R.string.providers_open_openai_verifier))
             }
+            Spacer(Modifier.height(10.dp))
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -414,7 +409,7 @@ private fun ProviderCredentialCard(
             shape = RectangleShape,
             title = { Text(stringResource(R.string.providers_delete_credential_title)) },
             text = {
-                Text(stringResource(R.string.providers_delete_credential_message, provider.displayName))
+                Text(stringResource(R.string.providers_delete_credential_message, CredentialProvider.OPENAI.displayName))
             },
             confirmButton = {
                 TextButton(onClick = {

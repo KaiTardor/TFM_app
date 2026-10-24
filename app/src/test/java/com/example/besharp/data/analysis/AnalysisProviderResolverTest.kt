@@ -27,11 +27,11 @@ class AnalysisProviderResolverTest {
     fun selectionUsesFixedOpenAiProvenanceModel() {
         assertEquals(
             OpenAiProvenanceProvider.MODEL_ID,
-            resolver.create(AnalysisProviderResolver.OPENAI_PROVENANCE_PROVIDER_ID).descriptor.modelId
+            resolver.describe(AnalysisProviderResolver.OPENAI_PROVENANCE_PROVIDER_ID).modelId
         )
         assertEquals(
             AnalysisProviderResolver.OPENAI_PROVENANCE_PROVIDER_ID,
-            resolver.create(AnalysisProviderResolver.OPENAI_PROVENANCE_PROVIDER_ID).descriptor.providerId
+            resolver.describe(AnalysisProviderResolver.OPENAI_PROVENANCE_PROVIDER_ID).providerId
         )
     }
 
@@ -42,18 +42,9 @@ class AnalysisProviderResolverTest {
         }
         val descriptions = AnalysisProviderResolver(secretStore, custom)
         assertEquals(
-            resolver.create(AnalysisProviderResolver.OPENAI_PROVENANCE_PROVIDER_ID).descriptor,
+            OpenAiProvenanceProvider.describe(),
             descriptions.describe(AnalysisProviderResolver.OPENAI_PROVENANCE_PROVIDER_ID)
         )
-    }
-
-    @Test
-    fun officialProvenanceProviderDeclaresItsOriginalFileLimits() {
-        val openAi = resolver.create(AnalysisProviderResolver.OPENAI_PROVENANCE_PROVIDER_ID)
-            as OriginalMediaAnalysisProvider
-
-        assertEquals(setOf("image/png", "image/jpeg", "image/webp"), openAi.supportedMimeTypes)
-        assertEquals(OriginalMediaInput.MAX_SIZE_BYTES, openAi.maxInputBytes)
     }
 
     @Test
@@ -75,6 +66,9 @@ class AnalysisProviderResolverTest {
         assertEquals(OpenAiProvenanceProvider.MODEL_ID, provider.descriptor.modelId)
         assertTrue(provider is OriginalMediaAnalysisProvider)
         assertEquals(AnalysisInputType.ORIGINAL_FILE, provider.descriptor.inputType)
+        val originalProvider = provider as OriginalMediaAnalysisProvider
+        assertEquals(setOf("image/png", "image/jpeg", "image/webp"), originalProvider.supportedMimeTypes)
+        assertEquals(OriginalMediaInput.MAX_SIZE_BYTES, originalProvider.maxInputBytes)
     }
 
     @Test
@@ -93,15 +87,10 @@ class AnalysisProviderResolverTest {
         }
         val resolver = AnalysisProviderResolver(secretStore, configurationStore)
 
-        for (useSnapshot in listOf(false, true)) {
-            val failure = runCatching {
-                if (useSnapshot) resolver.create(customJob(snapshot))
-                else resolver.create(snapshot.providerId())
-            }.exceptionOrNull()
+        val failure = runCatching { resolver.create(customJob(snapshot)) }.exceptionOrNull()
 
-            assertTrue(failure is IllegalStateException)
-            assertEquals("El destino custom ha cambiado", failure?.message)
-        }
+        assertTrue(failure is IllegalStateException)
+        assertEquals("El destino custom ha cambiado", failure?.message)
         assertEquals(0, credentialReads)
     }
 
@@ -123,17 +112,11 @@ class AnalysisProviderResolverTest {
         }
         val resolver = AnalysisProviderResolver(secretStore, configurationStore)
 
-        for (useSnapshot in listOf(false, true)) {
-            current = snapshot
-            val failure = runCatching {
-                if (useSnapshot) resolver.create(customJob(snapshot))
-                else resolver.create(snapshot.providerId())
-            }.exceptionOrNull()
+        val failure = runCatching { resolver.create(customJob(snapshot)) }.exceptionOrNull()
 
-            assertTrue(failure is IllegalStateException)
-            assertEquals("El destino custom ha cambiado", failure?.message)
-        }
-        assertEquals(2, credentialReads)
+        assertTrue(failure is IllegalStateException)
+        assertEquals("El destino custom ha cambiado", failure?.message)
+        assertEquals(1, credentialReads)
     }
 
     private fun customJob(configuration: CustomApiConfiguration) = AnalysisJobEntity(

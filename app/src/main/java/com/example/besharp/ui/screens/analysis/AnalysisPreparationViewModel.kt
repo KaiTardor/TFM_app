@@ -269,13 +269,13 @@ class AnalysisPreparationViewModel(
                 try {
                     val custom = customApiConfigurationStore.getConfiguration()
                     val providers = withContext(ioDispatcher) {
-                        snapshot.selectedModelIds.map(providerResolver::create)
+                        snapshot.selectedModelIds.map(providerResolver::describe)
                     }
                     val requests = providers.map { provider ->
                         AnalysisJobRequest(
-                            provider = provider.descriptor,
+                            provider = provider,
                             customConfiguration = custom?.takeIf {
-                                it.providerId() == provider.descriptor.providerId
+                                it.providerId() == provider.providerId
                             }
                         )
                     }

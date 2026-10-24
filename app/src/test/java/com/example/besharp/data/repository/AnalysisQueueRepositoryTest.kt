@@ -142,7 +142,7 @@ class AnalysisQueueRepositoryTest {
         ))
         assertFalse(repository.markCancelled(queued.jobId))
 
-        val entry = readHistory().single()
+        val entry = checkNotNull(dao.getJob(queued.jobId))
         assertEquals(AnalysisErrorCategory.PROVIDER_UNAVAILABLE.name, entry.errorCategory)
         assertEquals(503, entry.httpStatus)
     }
@@ -303,7 +303,7 @@ class AnalysisQueueRepositoryTest {
         assertTrue(reconcile.execute())
         assertEquals(0, enqueued)
         assertEquals(AnalysisJobStatus.FAILED, repository.getJob(queued.jobId)?.status)
-        assertEquals(AnalysisErrorCategory.LOCAL_STORAGE.name, readHistory().single().errorCategory)
+        assertEquals(AnalysisErrorCategory.LOCAL_STORAGE.name, dao.getJob(queued.jobId)?.errorCategory)
     }
 
     @Test

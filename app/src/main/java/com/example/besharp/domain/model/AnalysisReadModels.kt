@@ -13,8 +13,6 @@ data class AnalysisHistoryEntry(
     val providerName: String,
     val status: String,
     val errorMessage: String?,
-    val errorCategory: String?,
-    val httpStatus: Int?,
     val result: AuthenticityResult?
 )
 
