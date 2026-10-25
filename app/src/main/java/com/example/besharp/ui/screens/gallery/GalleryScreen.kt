@@ -116,10 +116,12 @@ fun GalleryScreen(
                 visible = showPartialAccessNotice &&
                     (uiState is GalleryUiState.Empty || uiState is GalleryUiState.Content)
             ) {
-                PartialAccessNotice(
-                    onRequestPermission,
-                    partialAccessNoticeDurationMillis,
-                    onPartialAccessNoticeExpired
+                TimedNotice(
+                    message = stringResource(R.string.gallery_partial_access),
+                    actionLabel = stringResource(R.string.action_manage).uppercase(),
+                    onAction = onRequestPermission,
+                    durationMillis = partialAccessNoticeDurationMillis,
+                    onExpired = onPartialAccessNoticeExpired
                 )
             }
             when (uiState) {
@@ -289,21 +291,6 @@ private fun GalleryStatusState(
             Button(onClick = onAction) { Text(label) }
         }
     }
-}
-
-@Composable
-private fun PartialAccessNotice(
-    onRequestPermission: () -> Unit,
-    durationMillis: Int,
-    onExpired: () -> Unit
-) {
-    TimedNotice(
-        message = stringResource(R.string.gallery_partial_access),
-        actionLabel = stringResource(R.string.action_manage).uppercase(),
-        onAction = onRequestPermission,
-        durationMillis = durationMillis,
-        onExpired = onExpired
-    )
 }
 
 /**

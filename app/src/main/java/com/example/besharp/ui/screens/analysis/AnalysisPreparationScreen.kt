@@ -259,13 +259,14 @@ fun AnalysisPreparationScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item {
-        AnalysisStep(
+        ExpandableSection(
             title = stringResource(R.string.analysis_prep_step1),
-            summary = stringResource(
+            subtitle = stringResource(
                 R.string.analysis_selected_images, state.images.size, AnalysisPreparationViewModel.MAX_IMAGES
             ),
             expanded = expandedStep == 1,
-            onToggle = { expandedStep = if (expandedStep == 1) 0 else 1 }
+            onToggle = { expandedStep = if (expandedStep == 1) 0 else 1 },
+            contentSpacing = 10.dp
         ) {
             ImageSourceButtons(
                 enabled = !state.isRunning && !cameraBusy && !cameraError && pendingCameraPath == null &&
@@ -302,14 +303,15 @@ fun AnalysisPreparationScreen(
         }
 
         item {
-        AnalysisStep(
+        ExpandableSection(
             title = stringResource(R.string.analysis_prep_step2),
-            summary = stringResource(
+            subtitle = stringResource(
                 R.string.analysis_selected_models,
                 state.selectedModelIds.size
             ),
             expanded = expandedStep == 2,
-            onToggle = { expandedStep = if (expandedStep == 2) 0 else 2 }
+            onToggle = { expandedStep = if (expandedStep == 2) 0 else 2 },
+            contentSpacing = 10.dp
         ) {
             state.models.forEach { model ->
                 ModelSelectionRow(
@@ -486,24 +488,6 @@ fun AnalysisPreparationScreen(
             }
         )
     }
-}
-
-@Composable
-private fun AnalysisStep(
-    title: String,
-    summary: String,
-    expanded: Boolean,
-    onToggle: () -> Unit,
-    content: @Composable () -> Unit
-) {
-    ExpandableSection(
-        title = title,
-        subtitle = summary,
-        expanded = expanded,
-        onToggle = onToggle,
-        contentSpacing = 10.dp,
-        content = content
-    )
 }
 
 @Composable

@@ -13,10 +13,11 @@ internal const val MAX_HTTP_RESPONSE_BYTES = 256 * 1024
 
 internal data class BoundedHttpResponse(
     val statusCode: Int,
-    val isSuccessful: Boolean,
     val body: ByteArray,
     val headers: Map<String, String>
-)
+) {
+    val isSuccessful: Boolean get() = statusCode in 200..299
+}
 
 internal class ResponseTooLargeException : IOException("HTTP response exceeds the allowed size")
 
@@ -39,7 +40,6 @@ internal suspend fun Call.awaitBoundedResponse(
                         Result.success(
                             BoundedHttpResponse(
                                 statusCode = it.code,
-                                isSuccessful = it.isSuccessful,
                                 body = body,
                                 headers = it.headers.names().associateWith { name -> it.header(name).orEmpty() }
                             )

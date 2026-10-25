@@ -43,7 +43,7 @@ class AnalysisQueueRepositoryTest {
 
     private suspend fun AnalysisQueueRepository.enqueue(
         imageUri: String, imageDisplayName: String, provider: ProviderDescriptor
-    ) = enqueueAssessment(imageUri, imageDisplayName, listOf(AnalysisJobRequest(provider))).jobs.single()
+    ) = enqueueAssessment(imageUri, imageDisplayName, listOf(AnalysisJobRequest(provider))).single()
 
     @Test
     fun finalizationTriggersCleanupOnceIncludingCancellationWithoutAWorker() = runBlocking {
@@ -203,7 +203,7 @@ class AnalysisQueueRepositoryTest {
         val completed = repository.finalizeAssessmentIfReady(assessmentId)
         val restored = readHistory().single().result
 
-        assertEquals(FinalResolution.AI_GENERATED_OR_EDITED, completed?.assessment?.resolution)
+        assertEquals(FinalResolution.AI_GENERATED_OR_EDITED, completed?.resolution)
         assertEquals(2, restored?.evidenceSignals?.size)
         assertNull(repository.finalizeAssessmentIfReady(assessmentId))
     }
@@ -221,11 +221,12 @@ class AnalysisQueueRepositoryTest {
             )
         )
 
-        val assessment = dao.assessment(queued.assessmentId)
-        assertEquals(2, queued.jobs.size)
+        val assessmentId = queued.first().assessmentId
+        val assessment = dao.assessment(assessmentId)
+        assertEquals(2, queued.size)
         assertEquals(2, assessment?.expectedJobCount)
         assertEquals(com.example.besharp.data.local.entity.ImageAssessmentStatus.ACTIVE, assessment?.status)
-        assertEquals(2, dao.allJobs().count { it.assessmentId == queued.assessmentId })
+        assertEquals(2, dao.allJobs().count { it.assessmentId == assessmentId })
     }
 
     @Test
@@ -248,7 +249,7 @@ class AnalysisQueueRepositoryTest {
         val recovered = repository.finalizeReadyAssessments()
 
         assertEquals(listOf(queued.assessmentId), recovered.map { it.assessmentId })
-        assertEquals(FinalResolution.POSSIBLY_SYNTHETIC, recovered.single().assessment.resolution)
+        assertEquals(FinalResolution.POSSIBLY_SYNTHETIC, recovered.single().resolution)
     }
 
     @Test
@@ -261,7 +262,7 @@ class AnalysisQueueRepositoryTest {
             summary = "Sin señales.", indicators = emptyList(), analyzedAt = 1, durationMillis = 1
         ))
         val completed = repository.finalizeAssessmentIfReady(queued.assessmentId)!!
-        assertEquals(FinalResolution.INCONCLUSIVE, completed.assessment.resolution)
+        assertEquals(FinalResolution.INCONCLUSIVE, completed.resolution)
         assertFalse(completed.hasExecutionErrors)
     }
 

@@ -17,8 +17,7 @@ data class ResolutionInput(
     val evidenceSignals: List<EvidenceSignal> = emptyList(),
     val completedJobCount: Int = 0,
     val failedJobCount: Int = 0,
-    val cancelledJobCount: Int = 0,
-    val timedOut: Boolean = false
+    val cancelledJobCount: Int = 0
 ) {
     init {
         require(completedJobCount >= 0)
@@ -28,13 +27,11 @@ data class ResolutionInput(
 }
 
 data class VisualEstimate(
-    val providerId: String,
     val syntheticProbability: Int?,
     val isLikelySynthetic: Boolean,
     val isInconclusive: Boolean = false
 ) {
     init {
-        require(providerId.isNotBlank())
         require(syntheticProbability == null || syntheticProbability in 0..100)
     }
 }

@@ -31,7 +31,7 @@ object OriginalMediaPreparer {
 
         localAccess(AnalysisErrorCategory.SOURCE_UNAVAILABLE) {
             resolver.openAssetFileDescriptor(uri, "r")?.use { descriptor ->
-                validateSize(descriptor.length, maxInputBytes, providerName)
+                validateSize(descriptor.length, maxInputBytes)
             }
         }
 
@@ -58,7 +58,7 @@ object OriginalMediaPreparer {
                                 val count = localAccess(AnalysisErrorCategory.SOURCE_UNAVAILABLE) { input.read(buffer) }
                                 if (count == -1) break
                                 total += count
-                                validateSize(total, maxInputBytes, providerName)
+                                validateSize(total, maxInputBytes)
                                 output.write(buffer, 0, count)
                             }
                         }
@@ -90,11 +90,10 @@ object OriginalMediaPreparer {
         )
     }
 
-    internal fun validateSize(size: Long, maximum: Long, providerName: String) {
+    internal fun validateSize(size: Long, maximum: Long) {
         if (size > maximum) {
             throw AnalysisProviderException(
                 "La imagen original supera el limite de ${maximum / (1024 * 1024)} MiB",
-                providerName = providerName,
                 category = AnalysisErrorCategory.FILE_TOO_LARGE
             )
         }

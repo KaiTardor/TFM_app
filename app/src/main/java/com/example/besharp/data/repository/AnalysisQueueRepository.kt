@@ -13,7 +13,6 @@ import com.example.besharp.data.local.entity.EvidenceSignalEntity
 import com.example.besharp.data.local.entity.ImageAssessmentEntity
 import com.example.besharp.data.util.enumValueOrDefault
 import com.google.gson.Gson
-import com.example.besharp.domain.resolution.FinalAssessment
 import com.example.besharp.domain.resolution.ResolutionEngine
 import com.example.besharp.domain.resolution.ResolutionInput
 import com.example.besharp.domain.resolution.VisualEstimate
@@ -31,11 +30,6 @@ data class AnalysisJobRequest(
     val customConfiguration: CustomApiConfiguration? = null
 )
 
-data class QueuedAssessment(
-    val assessmentId: Long,
-    val jobs: List<QueuedAnalysisJob>
-)
-
 data class AnalysisExecutionJob(
     val entity: AnalysisJobEntity,
     val imageUri: String,
@@ -44,22 +38,19 @@ data class AnalysisExecutionJob(
     val jobId get() = entity.jobId
     val assessmentId get() = entity.assessmentId
     val providerId get() = entity.providerId
-    val providerName get() = entity.providerName
     val modelId get() = entity.modelId
     val capability get() = entity.capability
     val inputType get() = entity.inputType
     val executionId get() = entity.executionId
     val destinationFingerprint get() = entity.destinationFingerprint
     val customEndpointUrl get() = entity.customEndpointUrl
-    val customParametersJson get() = entity.customParametersJson
     val status get() = entity.status
 }
 
 data class CompletedAssessment(
     val assessmentId: Long,
-    val imageUri: String,
     val imageDisplayName: String,
-    val assessment: FinalAssessment,
+    val resolution: FinalResolution,
     val hasExecutionErrors: Boolean
 )
 
@@ -74,11 +65,18 @@ class AnalysisQueueRepository(
         return toExecutionJob(entity)
     }
 
+    suspend fun getActiveJobs(): List<AnalysisExecutionJob> =
+        dao.getActiveJobs().mapNotNull { entity -> toExecutionJob(entity) }
+
+    suspend fun getActiveJobsForProviderPrefix(providerPrefix: String): List<AnalysisExecutionJob> =
+        dao.getActiveJobsForProviderPrefix(providerPrefix)
+            .mapNotNull { entity -> toExecutionJob(entity) }
+
     suspend fun enqueueAssessment(
         imageUri: String,
         imageDisplayName: String,
         requests: List<AnalysisJobRequest>
-    ): QueuedAssessment {
+    ): List<QueuedAnalysisJob> {
         require(requests.isNotEmpty()) { "Selecciona al menos un proveedor" }
         requests.forEach { request ->
             val isCustom = request.provider.providerId.startsWith(
@@ -115,10 +113,7 @@ class AnalysisQueueRepository(
                 )
             }
         )
-        return QueuedAssessment(
-            assessmentId = created.assessmentId,
-            jobs = created.jobIds.map { jobId -> QueuedAnalysisJob(jobId, created.assessmentId) }
-        )
+        return created.jobIds.map { jobId -> QueuedAnalysisJob(jobId, created.assessmentId) }
     }
 
     suspend fun markStarted(jobId: Long): Boolean =
@@ -203,7 +198,6 @@ class AnalysisQueueRepository(
                     ) return@mapNotNull null
                     val verdict = enumValueOrDefault(result.verdict, AnalysisVerdict.INCONCLUSIVE)
                     VisualEstimate(
-                        providerId = row.job.providerId,
                         syntheticProbability = result.syntheticProbability,
                         isLikelySynthetic = verdict == AnalysisVerdict.LIKELY_SYNTHETIC,
                         isInconclusive = verdict == AnalysisVerdict.INCONCLUSIVE
@@ -230,9 +224,8 @@ class AnalysisQueueRepository(
                 onAssessmentCompleted(assessmentId)
                 CompletedAssessment(
                     assessmentId = assessmentId,
-                    imageUri = assessment.imageUri,
                     imageDisplayName = assessment.imageDisplayName,
-                    assessment = final,
+                    resolution = final.resolution,
                     hasExecutionErrors = rows.any {
                         it.job.status == AnalysisJobStatus.FAILED || it.job.status == AnalysisJobStatus.CANCELLED
                     }
@@ -245,13 +238,6 @@ class AnalysisQueueRepository(
         dao.getReadyAssessmentIds().mapNotNull { assessmentId ->
             finalizeAssessmentIfReady(assessmentId)
         }
-
-    suspend fun getActiveJobs(): List<AnalysisExecutionJob> =
-        dao.getActiveJobs().mapNotNull { entity -> toExecutionJob(entity) }
-
-    suspend fun getActiveJobsForProviderPrefix(providerPrefix: String): List<AnalysisExecutionJob> =
-        dao.getActiveJobsForProviderPrefix(providerPrefix)
-            .mapNotNull { entity -> toExecutionJob(entity) }
 
     suspend fun deleteForImage(imageUri: String) = dao.deleteForImage(imageUri)
     suspend fun deleteOtherCompletedAssessments(imageUri: String, keepAssessmentId: Long) =

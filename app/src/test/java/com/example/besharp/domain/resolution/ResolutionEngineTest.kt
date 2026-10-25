@@ -14,7 +14,6 @@ class ResolutionEngineTest {
             completedJobCount = 1,
             failedJobCount = 0,
             cancelledJobCount = 0,
-            timedOut = false,
             evidenceSignals = emptyList(),
             visualEstimates = emptyList()
         )
@@ -35,7 +34,6 @@ class ResolutionEngineTest {
             completedJobCount = 1,
             failedJobCount = 0,
             cancelledJobCount = 0,
-            timedOut = false,
             evidenceSignals = listOf(syntheticSignal),
             visualEstimates = emptyList()
         )
@@ -59,7 +57,6 @@ class ResolutionEngineTest {
             completedJobCount = 1,
             failedJobCount = 0,
             cancelledJobCount = 0,
-            timedOut = false,
             evidenceSignals = listOf(captureSignal),
             visualEstimates = emptyList()
         )
@@ -71,7 +68,6 @@ class ResolutionEngineTest {
     @Test
     fun `resolve returns POSSIBLY_SYNTHETIC when visual estimate is highly synthetic`() {
         val estimate = VisualEstimate(
-            providerId = "test",
             isLikelySynthetic = true,
             syntheticProbability = 95,
             isInconclusive = false
@@ -80,7 +76,6 @@ class ResolutionEngineTest {
             completedJobCount = 1,
             failedJobCount = 0,
             cancelledJobCount = 0,
-            timedOut = false,
             evidenceSignals = emptyList(),
             visualEstimates = listOf(estimate)
         )

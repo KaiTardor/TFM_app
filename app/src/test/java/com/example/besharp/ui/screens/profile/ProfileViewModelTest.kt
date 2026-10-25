@@ -46,18 +46,18 @@ class ProfileViewModelTest {
             ioDispatcher = dispatcher
         )
 
-        viewModel.updateCredentialDraft(CredentialProvider.OPENAI, "secret-draft")
-        viewModel.saveCredential(CredentialProvider.OPENAI)
+        viewModel.updateOpenAiCredentialDraft("secret-draft")
+        viewModel.saveOpenAiCredential()
         advanceUntilIdle()
 
-        assertEquals("secret-draft", viewModel.credentialDrafts.value[CredentialProvider.OPENAI])
+        assertEquals("secret-draft", viewModel.openAiCredentialDraft.value)
         assertTrue(viewModel.providerStates.value[CredentialProvider.OPENAI]?.saveState is SaveState.Error)
 
         credentials.failSave = false
-        viewModel.saveCredential(CredentialProvider.OPENAI)
+        viewModel.saveOpenAiCredential()
         advanceUntilIdle()
 
-        assertEquals("", viewModel.credentialDrafts.value[CredentialProvider.OPENAI])
+        assertEquals("", viewModel.openAiCredentialDraft.value)
         assertTrue(viewModel.providerStates.value[CredentialProvider.OPENAI]?.saveState is SaveState.Success)
         } finally {
             Dispatchers.resetMain()
@@ -146,14 +146,14 @@ class ProfileViewModelTest {
                 AnalysisQueueRepository(EmptyQueueDao), EmptyScheduler, dispatcher
             )
             credentials.onSave = {
-                viewModel.updateCredentialDraft(CredentialProvider.OPENAI, "newer-key")
+                viewModel.updateOpenAiCredentialDraft("newer-key")
             }
-            viewModel.updateCredentialDraft(CredentialProvider.OPENAI, "submitted-key")
-            viewModel.saveCredential(CredentialProvider.OPENAI)
+            viewModel.updateOpenAiCredentialDraft("submitted-key")
+            viewModel.saveOpenAiCredential()
             advanceUntilIdle()
 
             assertEquals("submitted-key", credentials.getCredential(CredentialProvider.OPENAI))
-            assertEquals("newer-key", viewModel.credentialDrafts.value[CredentialProvider.OPENAI])
+            assertEquals("newer-key", viewModel.openAiCredentialDraft.value)
             assertEquals(SaveState.Idle, viewModel.providerStates.value[CredentialProvider.OPENAI]?.saveState)
         } finally {
             Dispatchers.resetMain()
@@ -242,10 +242,10 @@ class ProfileViewModelTest {
                 dispatcher,
                 validator = CredentialValidator { _, _ -> reply.await() }
             )
-            viewModel.validateCredential(CredentialProvider.OPENAI)
+            viewModel.validateOpenAiCredential()
             runCurrent()
             assertTrue(viewModel.providerStates.value[CredentialProvider.OPENAI]?.isValidating == true)
-            viewModel.updateCredentialDraft(CredentialProvider.OPENAI, "new-key")
+            viewModel.updateOpenAiCredentialDraft("new-key")
             reply.complete(Result.success(Unit))
             advanceUntilIdle()
 
@@ -265,9 +265,9 @@ class ProfileViewModelTest {
             val viewModel = networkViewModel(
                 dispatcher, validator = CredentialValidator { _, _ -> reply.await() }
             )
-            viewModel.validateCredential(CredentialProvider.OPENAI)
+            viewModel.validateOpenAiCredential()
             runCurrent()
-            viewModel.deleteCredential(CredentialProvider.OPENAI)
+            viewModel.deleteOpenAiCredential()
             runCurrent()
             reply.complete(Result.success(Unit))
             advanceUntilIdle()
@@ -300,11 +300,11 @@ class ProfileViewModelTest {
                 custom, AnalysisQueueRepository(EmptyQueueDao), EmptyScheduler, dispatcher
             )
             credentials.onDelete = {
-                viewModel.updateCredentialDraft(CredentialProvider.OPENAI, "new-draft")
+                viewModel.updateOpenAiCredentialDraft("new-draft")
             }
-            viewModel.deleteCredential(CredentialProvider.OPENAI)
+            viewModel.deleteOpenAiCredential()
             advanceUntilIdle()
-            assertEquals("new-draft", viewModel.credentialDrafts.value[CredentialProvider.OPENAI])
+            assertEquals("new-draft", viewModel.openAiCredentialDraft.value)
             assertEquals(null, credentials.getCredential(CredentialProvider.OPENAI))
 
             val newer = CustomApiDraft("New", "https://new.example/analyze", "v2")
@@ -333,9 +333,9 @@ class ProfileViewModelTest {
                 credentials, CredentialValidationService(),
                 custom, AnalysisQueueRepository(EmptyQueueDao), EmptyScheduler, dispatcher
             )
-            viewModel.updateCredentialDraft(CredentialProvider.OPENAI, "key")
-            viewModel.saveCredential(CredentialProvider.OPENAI)
-            viewModel.saveCredential(CredentialProvider.OPENAI)
+            viewModel.updateOpenAiCredentialDraft("key")
+            viewModel.saveOpenAiCredential()
+            viewModel.saveOpenAiCredential()
             viewModel.updateCustomApiDraft(CustomApiDraft("Detector", "https://custom.example/analyze", "v1"))
             viewModel.saveCustomApiConfiguration()
             viewModel.saveCustomApiConfiguration()
@@ -356,7 +356,7 @@ class ProfileViewModelTest {
                 dispatcher,
                 validator = CredentialValidator { _, _ -> error("validator failed") }
             )
-            viewModel.validateCredential(CredentialProvider.OPENAI)
+            viewModel.validateOpenAiCredential()
             advanceUntilIdle()
             assertEquals("validator failed", viewModel.providerStates.value[CredentialProvider.OPENAI]?.validationMessage)
             assertEquals(false, viewModel.providerStates.value[CredentialProvider.OPENAI]?.validationSucceeded)
@@ -403,7 +403,7 @@ class ProfileViewModelTest {
                 credentials, CredentialValidationService(),
                 EmptyCustomStore, AnalysisQueueRepository(EmptyQueueDao), EmptyScheduler, dispatcher
             )
-            viewModel.validateCredential(CredentialProvider.OPENAI)
+            viewModel.validateOpenAiCredential()
             advanceUntilIdle()
             val state = viewModel.providerStates.value.getValue(CredentialProvider.OPENAI)
             assertTrue(state.isConfigured)
@@ -426,8 +426,8 @@ class ProfileViewModelTest {
                 received = key
                 Result.success(Unit)
             })
-            viewModel.updateCredentialDraft(CredentialProvider.OPENAI, "  new-key  ")
-            viewModel.validateCredential(CredentialProvider.OPENAI)
+            viewModel.updateOpenAiCredentialDraft("  new-key  ")
+            viewModel.validateOpenAiCredential()
             advanceUntilIdle()
             assertEquals("new-key", received)
             assertEquals(true, viewModel.providerStates.value[CredentialProvider.OPENAI]?.validationSucceeded)
@@ -450,21 +450,21 @@ class ProfileViewModelTest {
                     EmptyCustomStore, AnalysisQueueRepository(EmptyQueueDao), EmptyScheduler, dispatcher
                 )
                 val failAfterEdit = {
-                    viewModel.updateCredentialDraft(CredentialProvider.OPENAI, "newer-draft")
+                    viewModel.updateOpenAiCredentialDraft("newer-draft")
                     error("write outcome ambiguous")
                 }
                 if (deleting) {
                     credentials.onDelete = failAfterEdit
-                    viewModel.deleteCredential(CredentialProvider.OPENAI)
+                    viewModel.deleteOpenAiCredential()
                 } else {
                     credentials.onSave = failAfterEdit
-                    viewModel.updateCredentialDraft(CredentialProvider.OPENAI, "submitted-key")
-                    viewModel.saveCredential(CredentialProvider.OPENAI)
+                    viewModel.updateOpenAiCredentialDraft("submitted-key")
+                    viewModel.saveOpenAiCredential()
                 }
                 advanceUntilIdle()
 
                 val state = viewModel.providerStates.value.getValue(CredentialProvider.OPENAI)
-                assertEquals("newer-draft", viewModel.credentialDrafts.value[CredentialProvider.OPENAI])
+                assertEquals("newer-draft", viewModel.openAiCredentialDraft.value)
                 assertEquals(SaveState.Idle, state.saveState)
                 assertEquals(null, state.validationMessage)
                 assertEquals(!deleting, state.isConfigured)
@@ -484,12 +484,12 @@ class ProfileViewModelTest {
                 credentials, CredentialValidationService(),
                 EmptyCustomStore, AnalysisQueueRepository(EmptyQueueDao), EmptyScheduler, dispatcher
             )
-            viewModel.updateCredentialDraft(CredentialProvider.OPENAI, "submitted-key")
-            viewModel.saveCredential(CredentialProvider.OPENAI)
+            viewModel.updateOpenAiCredentialDraft("submitted-key")
+            viewModel.saveOpenAiCredential()
             advanceUntilIdle()
 
             assertEquals("submitted-key", credentials.getCredential(CredentialProvider.OPENAI))
-            assertEquals("submitted-key", viewModel.credentialDrafts.value[CredentialProvider.OPENAI])
+            assertEquals("submitted-key", viewModel.openAiCredentialDraft.value)
             val state = viewModel.providerStates.value.getValue(CredentialProvider.OPENAI)
             assertTrue(state.isConfigured)
             assertTrue(state.saveState is SaveState.Error)

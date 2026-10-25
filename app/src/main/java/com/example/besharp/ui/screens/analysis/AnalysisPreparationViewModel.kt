@@ -116,8 +116,6 @@ class AnalysisPreparationViewModel(
         .observeAssessmentHistory(limit = 5_000)
         .map { entries -> entries.map(::toUiModel) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-    fun observeAssessment(assessmentId: Long) = analysisHistoryRepository.observeAssessment(assessmentId)
-        .map { it?.let(::toUiModel) }
     private val activeJobs = mutableSetOf<Long>()
     private val scheduling = AtomicBoolean(false)
     private val batchCancellationRequested = AtomicBoolean(false)
@@ -169,6 +167,19 @@ class AnalysisPreparationViewModel(
         updateConsentState()
     }
 
+    fun toggleModel(modelId: String) {
+        if (_uiState.value.isRunning) return
+        val option = _uiState.value.models.find { it.id == modelId } ?: return
+        if (!option.isConfigured) return
+        val selected = _uiState.value.selectedModelIds
+        _uiState.value = _uiState.value.copy(
+            selectedModelIds = if (modelId in selected) selected - modelId else selected + modelId,
+            batchError = null
+        )
+        persistPreparation()
+        updateConsentState()
+    }
+
     fun addImages(context: Context, uris: List<Uri>) {
         if (uris.isEmpty() || _uiState.value.isRunning) return
         addImages {
@@ -212,14 +223,6 @@ class AnalysisPreparationViewModel(
         addCapturedImage(uri.toString(), displayName)
     }
 
-    suspend fun refreshPendingCaptures(context: Context) = captureScanMutex.withLock {
-        val captures = withContext(ioDispatcher) {
-            listRecoverableCaptures(File(context.applicationContext.filesDir, "photos"))
-                .map { PendingCameraCapture(it.file.absolutePath, it.result) }
-        }
-        _pendingCaptures.value = captures
-    }
-
     internal fun addCapturedImage(uri: String, displayName: String) {
         if (_uiState.value.isRunning) return
         _uiState.value = _uiState.value.copy(
@@ -239,17 +242,124 @@ class AnalysisPreparationViewModel(
         persistPreparation()
     }
 
-    fun toggleModel(modelId: String) {
-        if (_uiState.value.isRunning) return
-        val option = _uiState.value.models.find { it.id == modelId } ?: return
-        if (!option.isConfigured) return
-        val selected = _uiState.value.selectedModelIds
-        _uiState.value = _uiState.value.copy(
-            selectedModelIds = if (modelId in selected) selected - modelId else selected + modelId,
-            batchError = null
-        )
-        persistPreparation()
-        updateConsentState()
+    fun validateRestoredImages(context: Context) {
+        validateRestoredImages { image ->
+            runCatching {
+                context.contentResolver.openAssetFileDescriptor(Uri.parse(image.uri), "r")
+                    ?.use { true }
+                    ?: false
+            }.getOrDefault(false)
+        }
+    }
+
+    internal fun validateRestoredImages(isReadable: suspend (SelectedAnalysisImage) -> Boolean) {
+        val images = _uiState.value.images
+        if (images.isEmpty() || !restoredImagesValidated.compareAndSet(false, true)) return
+        val generation = imageSelectionGeneration
+        viewModelScope.launch {
+            val invalidUris = withContext(ioDispatcher) {
+                images.filterNot { isReadable(it) }.mapTo(mutableSetOf()) { it.uri }
+            }
+            if (generation != imageSelectionGeneration || _uiState.value.isRunning) return@launch
+            // Solo retiramos URI invalidas; no restauramos una lista antigua.
+            val current = _uiState.value
+            val valid = current.images.filterNot { it.uri in invalidUris }
+            if (valid != current.images) {
+                _uiState.value = current.copy(images = valid)
+                persistPreparation()
+            }
+        }
+    }
+
+    suspend fun refreshPendingCaptures(context: Context) = captureScanMutex.withLock {
+        val captures = withContext(ioDispatcher) {
+            listRecoverableCaptures(File(context.applicationContext.filesDir, "photos"))
+                .map { PendingCameraCapture(it.file.absolutePath, it.result) }
+        }
+        _pendingCaptures.value = captures
+    }
+
+    fun requiresRemoteConsent(preview: RemoteConsentPreview = selectedConsentPreview()): Boolean {
+        val targets = preview.targets
+        return targets.isNotEmpty() && !consentStore.hasConsentFor(targets)
+    }
+
+    fun selectedConsentPreview(): RemoteConsentPreview {
+        val custom = customApiConfigurationStore.getConfiguration()
+        val customId = custom?.providerId()
+        val providers = _uiState.value.selectedModelIds.map { id ->
+            if (custom != null && id == customId) CustomApiAnalysisProvider.describe(custom)
+            else providerResolver.describe(id)
+        }.filter { it.isRemote }
+        val names = providers.joinToString { provider ->
+            if (custom == null || provider.providerId != customId) provider.displayName
+            else {
+                val endpoint = custom.validate().getOrThrow()
+                "${provider.displayName} (host: ${endpoint.host}, puerto: ${endpoint.port}, " +
+                    "ruta: ${endpoint.encodedPath}, modelo: ${custom.modelId.trim()})"
+            }
+        }
+        val targets = providers.mapTo(mutableSetOf()) { provider ->
+            RemoteConsentTarget(
+                providerId = provider.providerId,
+                destinationFingerprint = if (provider.providerId == customId)
+                    provider.providerId.removePrefix(CustomApiConfiguration.CUSTOM_PROVIDER_PREFIX)
+                else "${provider.providerId}:${provider.modelId}",
+                capability = provider.capability,
+                inputType = provider.inputType
+            )
+        }
+        return RemoteConsentPreview(names, targets)
+    }
+
+    suspend fun acceptRemoteConsent(preview: RemoteConsentPreview): Boolean {
+        return try {
+            // Solo autorizamos los destinos que se han mostrado en el dialogo.
+            check(preview.targets.isNotEmpty() && preview.targets == selectedConsentPreview().targets)
+            withContext(ioDispatcher) { consentStore.accept(preview.targets) }
+            _remoteConsentAccepted.value = true
+            preview.targets == selectedConsentPreview().targets
+        } catch (exception: CancellationException) {
+            _remoteConsentAccepted.value = consentStore.getCurrentConsent() != null
+            throw exception
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    suspend fun revokeRemoteConsent(): Boolean = withContext(NonCancellable) {
+        if (!cancellationInProgress.compareAndSet(false, true)) return@withContext false
+        // Si no se puede persistir la revocacion, no anunciamos que se ha aplicado.
+        val revoked = withContext(ioDispatcher) { runCatching { consentStore.revoke() }.isSuccess }
+        if (!revoked) {
+            cancellationInProgress.set(false)
+            return@withContext false
+        }
+        batchCancellationRequested.set(true)
+        _remoteConsentAccepted.value = false
+        _uiState.value = _uiState.value.copy(isRunning = false)
+        try {
+            var failure: Exception? = null
+            try {
+                analysisQueueRepository.cancelAllActive()
+            } catch (exception: Exception) {
+                failure = exception
+            } finally {
+                // Esta operacion no depende del ciclo de vida del ViewModel.
+                try {
+                    workScheduler.cancelAllRemote()
+                } catch (exception: Exception) {
+                    if (failure == null) failure = exception
+                }
+            }
+            failure?.let { throw it }
+            activeJobs.clear()
+        } catch (_: Exception) {
+            _uiState.value = _uiState.value.copy(batchError = "No se pudo completar la cancelacion de los trabajos remotos")
+        } finally {
+            cancellationInProgress.set(false)
+        }
+        true
     }
 
     fun analyze() {
@@ -320,138 +430,6 @@ class AnalysisPreparationViewModel(
         }
     }
 
-    fun consumeSubmission() {
-        if (_uiState.value.submissionId != 0L) {
-            _uiState.value = _uiState.value.copy(submissionId = 0L)
-        }
-    }
-
-    fun keepCompletedAssessment(imageUri: String, assessmentId: Long) {
-        viewModelScope.launch {
-            try {
-                withContext(ioDispatcher) {
-                    analysisQueueRepository.deleteOtherCompletedAssessments(imageUri, assessmentId)
-                }
-            } catch (exception: CancellationException) {
-                throw exception
-            } catch (_: Exception) {
-                _uiState.value = _uiState.value.copy(batchError = "No se pudo conservar el resultado elegido")
-            }
-        }
-    }
-
-    fun requiresRemoteConsent(preview: RemoteConsentPreview = selectedConsentPreview()): Boolean {
-        val targets = preview.targets
-        return targets.isNotEmpty() && !consentStore.hasConsentFor(targets)
-    }
-
-    fun selectedConsentPreview(): RemoteConsentPreview {
-        val custom = customApiConfigurationStore.getConfiguration()
-        val customId = custom?.providerId()
-        val providers = _uiState.value.selectedModelIds.map { id ->
-            if (custom != null && id == customId) CustomApiAnalysisProvider.describe(custom)
-            else providerResolver.describe(id)
-        }.filter { it.isRemote }
-        val names = providers.joinToString { provider ->
-            if (custom == null || provider.providerId != customId) provider.displayName
-            else {
-                val endpoint = custom.validate().getOrThrow()
-                "${provider.displayName} (host: ${endpoint.host}, puerto: ${endpoint.port}, " +
-                    "ruta: ${endpoint.encodedPath}, modelo: ${custom.modelId.trim()})"
-            }
-        }
-        val targets = providers.mapTo(mutableSetOf()) { provider ->
-            RemoteConsentTarget(
-                providerId = provider.providerId,
-                destinationFingerprint = if (provider.providerId == customId)
-                    provider.providerId.removePrefix(CustomApiConfiguration.CUSTOM_PROVIDER_PREFIX)
-                else "${provider.providerId}:${provider.modelId}",
-                capability = provider.capability,
-                inputType = provider.inputType
-            )
-        }
-        return RemoteConsentPreview(names, targets)
-    }
-
-    fun validateRestoredImages(context: Context) {
-        validateRestoredImages { image ->
-            runCatching {
-                context.contentResolver.openAssetFileDescriptor(Uri.parse(image.uri), "r")
-                    ?.use { true }
-                    ?: false
-            }.getOrDefault(false)
-        }
-    }
-
-    internal fun validateRestoredImages(isReadable: suspend (SelectedAnalysisImage) -> Boolean) {
-        val images = _uiState.value.images
-        if (images.isEmpty() || !restoredImagesValidated.compareAndSet(false, true)) return
-        val generation = imageSelectionGeneration
-        viewModelScope.launch {
-            val invalidUris = withContext(ioDispatcher) {
-                images.filterNot { isReadable(it) }.mapTo(mutableSetOf()) { it.uri }
-            }
-            if (generation != imageSelectionGeneration || _uiState.value.isRunning) return@launch
-            // Solo retiramos URI invalidas; no restauramos una lista antigua.
-            val current = _uiState.value
-            val valid = current.images.filterNot { it.uri in invalidUris }
-            if (valid != current.images) {
-                _uiState.value = current.copy(images = valid)
-                persistPreparation()
-            }
-        }
-    }
-
-    suspend fun acceptRemoteConsent(preview: RemoteConsentPreview): Boolean {
-        return try {
-            // Solo autorizamos los destinos que se han mostrado en el dialogo.
-            check(preview.targets.isNotEmpty() && preview.targets == selectedConsentPreview().targets)
-            withContext(ioDispatcher) { consentStore.accept(preview.targets) }
-            _remoteConsentAccepted.value = true
-            preview.targets == selectedConsentPreview().targets
-        } catch (exception: CancellationException) {
-            _remoteConsentAccepted.value = consentStore.getCurrentConsent() != null
-            throw exception
-        } catch (_: Exception) {
-            false
-        }
-    }
-
-    suspend fun revokeRemoteConsent(): Boolean = withContext(NonCancellable) {
-        if (!cancellationInProgress.compareAndSet(false, true)) return@withContext false
-        // Si no se puede persistir la revocacion, no anunciamos que se ha aplicado.
-        val revoked = withContext(ioDispatcher) { runCatching { consentStore.revoke() }.isSuccess }
-        if (!revoked) {
-            cancellationInProgress.set(false)
-            return@withContext false
-        }
-        batchCancellationRequested.set(true)
-        _remoteConsentAccepted.value = false
-        _uiState.value = _uiState.value.copy(isRunning = false)
-        try {
-            var failure: Exception? = null
-            try {
-                analysisQueueRepository.cancelAllActive()
-            } catch (exception: Exception) {
-                failure = exception
-            } finally {
-                // Esta operacion no depende del ciclo de vida del ViewModel.
-                try {
-                    workScheduler.cancelAllRemote()
-                } catch (exception: Exception) {
-                    if (failure == null) failure = exception
-                }
-            }
-            failure?.let { throw it }
-            activeJobs.clear()
-        } catch (_: Exception) {
-            _uiState.value = _uiState.value.copy(batchError = "No se pudo completar la cancelacion de los trabajos remotos")
-        } finally {
-            cancellationInProgress.set(false)
-        }
-        true
-    }
-
     fun cancelAnalysis() {
         batchCancellationRequested.set(true)
         val startsCleanup = cancellationInProgress.compareAndSet(false, true)
@@ -470,6 +448,29 @@ class AnalysisPreparationViewModel(
                 _uiState.value = _uiState.value.copy(batchError = "No se pudieron cancelar todos los trabajos")
             } finally {
                 cancellationInProgress.set(false)
+            }
+        }
+    }
+
+    fun consumeSubmission() {
+        if (_uiState.value.submissionId != 0L) {
+            _uiState.value = _uiState.value.copy(submissionId = 0L)
+        }
+    }
+
+    fun observeAssessment(assessmentId: Long) = analysisHistoryRepository.observeAssessment(assessmentId)
+        .map { it?.let(::toUiModel) }
+
+    fun keepCompletedAssessment(imageUri: String, assessmentId: Long) {
+        viewModelScope.launch {
+            try {
+                withContext(ioDispatcher) {
+                    analysisQueueRepository.deleteOtherCompletedAssessments(imageUri, assessmentId)
+                }
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (_: Exception) {
+                _uiState.value = _uiState.value.copy(batchError = "No se pudo conservar el resultado elegido")
             }
         }
     }
@@ -493,10 +494,6 @@ class AnalysisPreparationViewModel(
         )
     }
 
-    private fun updateConsentState() {
-        _remoteConsentAccepted.value = consentStore.getCurrentConsent() != null
-    }
-
     private fun ensureBatchNotCancelled() {
         if (batchCancellationRequested.get()) throw BatchSchedulingCancelled()
     }
@@ -513,6 +510,10 @@ class AnalysisPreparationViewModel(
         } catch (_: Exception) {
             _uiState.value = _uiState.value.copy(batchError = "No se pudo completar la limpieza del lote")
         }
+    }
+
+    private fun updateConsentState() {
+        _remoteConsentAccepted.value = consentStore.getCurrentConsent() != null
     }
 
     private fun displayName(context: Context, uri: Uri): String {

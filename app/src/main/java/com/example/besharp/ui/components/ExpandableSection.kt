@@ -28,11 +28,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.stringResource
 import com.example.besharp.R
 
-/**
- * Sección colapsable reutilizable con borde, título y subtítulo.
- * Unifica el patrón que antes estaba duplicado entre
- * PhotoDetailScreen (ExpandableSection) y AnalysisPreparationScreen (AnalysisStep).
- */
+// Seccion colapsable con titulo, subtitulo y contenido.
 @Composable
 fun ExpandableSection(
     title: String,

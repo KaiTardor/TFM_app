@@ -11,16 +11,15 @@ class OriginalMediaSizeTest {
     @Test
     fun declaredOrStreamedSizeAboveLimitHasSpecificCategory() {
         val error = assertThrows(AnalysisProviderException::class.java) {
-            OriginalMediaPreparer.validateSize(101, 100, "Proveedor")
+            OriginalMediaPreparer.validateSize(101, 100)
         }
         assertEquals(AnalysisErrorCategory.FILE_TOO_LARGE, error.category)
-        assertEquals("Proveedor", error.providerName)
     }
 
     @Test
     fun exactLimitAndUnknownDeclaredSizeAreAccepted() {
-        OriginalMediaPreparer.validateSize(100, 100, "Proveedor")
-        OriginalMediaPreparer.validateSize(-1, 100, "Proveedor")
+        OriginalMediaPreparer.validateSize(100, 100)
+        OriginalMediaPreparer.validateSize(-1, 100)
     }
 
     @Test

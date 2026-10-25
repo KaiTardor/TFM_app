@@ -108,16 +108,13 @@ object NotificationHelper {
         hasExecutionErrors: Boolean
     ) {
         val isSuccess = !hasExecutionErrors
-        if (!shouldPostResultNotification(
-                preferenceEnabled = areResultNotificationsEnabled(context),
-                isAppInForeground = isAppInForeground,
-                resultTypeEnabled = if (isSuccess) {
-                    areSuccessfulResultNotificationsEnabled(context)
-                } else {
-                    areFailedResultNotificationsEnabled(context)
-                }
-            ) || !canPostNotifications(context)
-        ) return
+        if (!areResultNotificationsEnabled(context) || isAppInForeground) return
+        val resultTypeEnabled = if (isSuccess) {
+            areSuccessfulResultNotificationsEnabled(context)
+        } else {
+            areFailedResultNotificationsEnabled(context)
+        }
+        if (!resultTypeEnabled || !canPostNotifications(context)) return
 
         createNotificationChannel(context.applicationContext)
         val intent = Intent(context, MainActivity::class.java).apply {
@@ -177,9 +174,3 @@ object NotificationHelper {
     private fun notificationId(assessmentId: Long): Int =
         (assessmentId xor (assessmentId ushr 32)).toInt()
 }
-
-internal fun shouldPostResultNotification(
-    preferenceEnabled: Boolean,
-    isAppInForeground: Boolean,
-    resultTypeEnabled: Boolean = true
-): Boolean = preferenceEnabled && resultTypeEnabled && !isAppInForeground

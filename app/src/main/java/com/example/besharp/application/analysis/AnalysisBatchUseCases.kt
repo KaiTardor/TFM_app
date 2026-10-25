@@ -34,13 +34,13 @@ class QueueAnalysisBatchUseCase(
         val prepared = buildList {
             images.forEach { image ->
                 ensureActive()
-                val assessment = repository.enqueueAssessment(
+                val jobs = repository.enqueueAssessment(
                     imageUri = image.uri,
                     imageDisplayName = image.displayName,
                     requests = requests
                 )
-                addAll(assessment.jobs)
-                onPrepared(assessment.jobs)
+                addAll(jobs)
+                onPrepared(jobs)
             }
         }
         prepared.forEach { job ->

@@ -62,7 +62,7 @@ internal fun ProviderCredentialsScreen(
     onBack: () -> Unit
 ) {
     val providerStates by viewModel.providerStates.collectAsStateWithLifecycle()
-    val credentialDrafts by viewModel.credentialDrafts.collectAsStateWithLifecycle()
+    val openAiCredentialDraft by viewModel.openAiCredentialDraft.collectAsStateWithLifecycle()
     val customApiConfiguration by viewModel.customApiConfiguration.collectAsStateWithLifecycle()
     val customApiDraft by viewModel.customApiDraft.collectAsStateWithLifecycle()
     val customApiSaveState by viewModel.customApiSaveState.collectAsStateWithLifecycle()
@@ -80,11 +80,11 @@ internal fun ProviderCredentialsScreen(
 
         OpenAiCredentialCard(
             state = providerStates[CredentialProvider.OPENAI] ?: ProviderCredentialState(),
-            credential = credentialDrafts[CredentialProvider.OPENAI].orEmpty(),
-            onCredentialChange = { viewModel.updateCredentialDraft(CredentialProvider.OPENAI, it) },
-            onSave = { viewModel.saveCredential(CredentialProvider.OPENAI) },
-            onValidate = { viewModel.validateCredential(CredentialProvider.OPENAI) },
-            onDelete = { viewModel.deleteCredential(CredentialProvider.OPENAI) },
+            credential = openAiCredentialDraft,
+            onCredentialChange = viewModel::updateOpenAiCredentialDraft,
+            onSave = viewModel::saveOpenAiCredential,
+            onValidate = viewModel::validateOpenAiCredential,
+            onDelete = viewModel::deleteOpenAiCredential,
             modifier = Modifier.fillMaxWidth()
         )
 

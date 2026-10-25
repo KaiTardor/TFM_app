@@ -32,7 +32,6 @@ class ProviderHttpErrorTest {
             "OpenAI",
             BoundedHttpResponse(
                 statusCode = 429,
-                isSuccessful = false,
                 body = """{"error":{"code":"insufficient_quota"}}""".toByteArray(),
                 headers = emptyMap()
             )
@@ -41,7 +40,6 @@ class ProviderHttpErrorTest {
             "OpenAI",
             BoundedHttpResponse(
                 statusCode = 429,
-                isSuccessful = false,
                 body = """{"error":{"code":"rate_limit_exceeded"}}""".toByteArray(),
                 headers = emptyMap()
             )

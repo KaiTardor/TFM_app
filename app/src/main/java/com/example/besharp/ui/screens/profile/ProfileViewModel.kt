@@ -57,16 +57,14 @@ class ProfileViewModel(
 ) : ViewModel() {
     private val mutationMutex = Mutex()
     private val cancelJobs = CancelAnalysisJobsUseCase(analysisQueueRepository, workScheduler)
-    private val configurationVersions = mutableMapOf<CredentialProvider, Long>()
+    private var openAiConfigurationVersion = 0L
     private var customDraftVersion = 0L
     private val _providerStates = MutableStateFlow(initialStates())
     val providerStates: StateFlow<Map<CredentialProvider, ProviderCredentialState>> =
         _providerStates.asStateFlow()
 
-    private val _credentialDrafts = MutableStateFlow(
-        CredentialProvider.entries.associateWith { "" }
-    )
-    val credentialDrafts: StateFlow<Map<CredentialProvider, String>> = _credentialDrafts.asStateFlow()
+    private val _openAiCredentialDraft = MutableStateFlow("")
+    val openAiCredentialDraft: StateFlow<String> = _openAiCredentialDraft.asStateFlow()
 
     private val _customApiConfiguration = MutableStateFlow(
         customApiConfigurationStore.getConfiguration()
@@ -80,39 +78,38 @@ class ProfileViewModel(
     private val _customApiSaveState = MutableStateFlow<SaveState>(SaveState.Idle)
     val customApiSaveState: StateFlow<SaveState> = _customApiSaveState.asStateFlow()
 
-    fun updateCredentialDraft(provider: CredentialProvider, credential: String) {
-        if (_credentialDrafts.value[provider] == credential) return
-        invalidateRequests(provider)
-        _credentialDrafts.value = _credentialDrafts.value + (provider to credential)
+    fun updateOpenAiCredentialDraft(credential: String) {
+        if (_openAiCredentialDraft.value == credential) return
+        invalidateOpenAiRequests()
+        _openAiCredentialDraft.value = credential
     }
 
-    fun saveCredential(provider: CredentialProvider) {
-        if (provider == CredentialProvider.CUSTOM_API) return
-        if (_providerStates.value[provider]?.saveState is SaveState.Saving) return
-        val credential = _credentialDrafts.value[provider].orEmpty()
-        val alreadyConfigured = _providerStates.value[provider]?.isConfigured == true
+    fun saveOpenAiCredential() {
+        if (_providerStates.value[CredentialProvider.OPENAI]?.saveState is SaveState.Saving) return
+        val credential = _openAiCredentialDraft.value
+        val alreadyConfigured = _providerStates.value[CredentialProvider.OPENAI]?.isConfigured == true
         if (credential.isBlank() && !alreadyConfigured) return
-        invalidateRequests(provider)
-        val version = configurationVersions[provider]
-        updateState(provider) { it.copy(saveState = SaveState.Saving) }
+        invalidateOpenAiRequests()
+        val version = openAiConfigurationVersion
+        updateState(CredentialProvider.OPENAI) { it.copy(saveState = SaveState.Saving) }
         viewModelScope.launch {
             mutationMutex.withLock {
                 try {
                     withContext(ioDispatcher) {
                         if (credential.isNotBlank() && alreadyConfigured) {
-                            cancelActiveProviderJobs(provider)
+                            cancelActiveProviderJobs(CredentialProvider.OPENAI)
                         }
                         if (credential.isNotBlank()) {
-                            credentialStore.saveCredential(provider, credential)
+                            credentialStore.saveCredential(CredentialProvider.OPENAI, credential)
                         }
                     }
                     // No borramos cambios escritos mientras se guardaba el borrador anterior.
-                    val draftUnchanged = configurationVersions[provider] == version
-                    invalidateRequests(provider)
+                    val draftUnchanged = openAiConfigurationVersion == version
+                    invalidateOpenAiRequests()
                     if (draftUnchanged) {
-                        _credentialDrafts.value = _credentialDrafts.value + (provider to "")
+                        _openAiCredentialDraft.value = ""
                     }
-                    updateState(provider) {
+                    updateState(CredentialProvider.OPENAI) {
                         it.copy(
                             isConfigured = true,
                             validationMessage = if (draftUnchanged) "Configuración guardada" else null,
@@ -124,80 +121,79 @@ class ProfileViewModel(
                     throw error
                 } catch (error: Exception) {
                     // Una excepcion no garantiza que la escritura no se haya aplicado.
-                    refreshStoredConfiguration(provider)
-                    if (configurationVersions[provider] == version) {
-                        showCredentialError(provider, error.message ?: "No se pudo completar el guardado de la credencial")
+                    refreshStoredConfiguration(CredentialProvider.OPENAI)
+                    if (openAiConfigurationVersion == version) {
+                        showOpenAiCredentialError(error.message ?: "No se pudo completar el guardado de la credencial")
                     } else {
-                        updateState(provider) { it.copy(saveState = SaveState.Idle) }
+                        updateState(CredentialProvider.OPENAI) { it.copy(saveState = SaveState.Idle) }
                     }
                 }
             }
         }
     }
 
-    fun deleteCredential(provider: CredentialProvider) {
-        if (_providerStates.value[provider]?.saveState is SaveState.Saving) return
-        invalidateRequests(provider)
-        val version = configurationVersions[provider]
-        updateState(provider) { it.copy(saveState = SaveState.Saving) }
-        viewModelScope.launch {
-            mutationMutex.withLock {
-                try {
-                    withContext(ioDispatcher) {
-                        cancelActiveProviderJobs(provider)
-                        credentialStore.deleteCredential(provider)
-                    }
-                    val draftUnchanged = configurationVersions[provider] == version
-                    invalidateRequests(provider)
-                    updateState(provider) { ProviderCredentialState() }
-                    if (draftUnchanged) {
-                        _credentialDrafts.value = _credentialDrafts.value + (provider to "")
-                    }
-                } catch (error: CancellationException) {
-                    throw error
-                } catch (error: Exception) {
-                    refreshStoredConfiguration(provider)
-                    if (configurationVersions[provider] == version) {
-                        showCredentialError(provider, error.message ?: "No se pudo eliminar la credencial")
-                    } else {
-                        updateState(provider) { it.copy(saveState = SaveState.Idle) }
-                    }
-                }
-            }
-        }
-    }
-
-    fun validateCredential(provider: CredentialProvider) {
-        if (provider == CredentialProvider.CUSTOM_API) return
-        if (_providerStates.value[provider]?.isConfigured != true) return
-        if (_providerStates.value[provider]?.isValidating == true ||
-            _providerStates.value[provider]?.saveState is SaveState.Saving
+    fun validateOpenAiCredential() {
+        if (_providerStates.value[CredentialProvider.OPENAI]?.isConfigured != true) return
+        if (_providerStates.value[CredentialProvider.OPENAI]?.isValidating == true ||
+            _providerStates.value[CredentialProvider.OPENAI]?.saveState is SaveState.Saving
         ) return
-        val version = configurationVersions[provider] ?: 0L
-        val credentialDraft = _credentialDrafts.value[provider]
-        updateState(provider) {
+        val version = openAiConfigurationVersion
+        val credentialDraft = _openAiCredentialDraft.value
+        updateState(CredentialProvider.OPENAI) {
             it.copy(isValidating = true, validationMessage = null, validationSucceeded = null)
         }
         viewModelScope.launch {
             val result = try {
-                val credential = credentialDraft?.trim()?.takeIf { it.isNotBlank() }
-                    ?: withContext(ioDispatcher) { credentialStore.getCredential(provider) }
+                val credential = credentialDraft.trim().takeIf { it.isNotBlank() }
+                    ?: withContext(ioDispatcher) { credentialStore.getCredential(CredentialProvider.OPENAI) }
                     ?: error("No se pudo leer la credencial guardada")
-                if ((configurationVersions[provider] ?: 0L) != version) return@launch
-                validationService.validate(provider, credential)
+                if (openAiConfigurationVersion != version) return@launch
+                validationService.validate(CredentialProvider.OPENAI, credential)
             } catch (exception: CancellationException) {
                 throw exception
             } catch (exception: Exception) {
                 Result.failure(exception)
             }
-            if ((configurationVersions[provider] ?: 0L) != version) return@launch
-            updateState(provider) {
+            if (openAiConfigurationVersion != version) return@launch
+            updateState(CredentialProvider.OPENAI) {
                 it.copy(
                     isValidating = false,
                     validationMessage = if (result.isSuccess) "Credencial accesible" else
                         result.exceptionOrNull()?.message ?: "No se pudo validar la conexion",
                     validationSucceeded = result.isSuccess
                 )
+            }
+        }
+    }
+
+    fun deleteOpenAiCredential() {
+        if (_providerStates.value[CredentialProvider.OPENAI]?.saveState is SaveState.Saving) return
+        invalidateOpenAiRequests()
+        val version = openAiConfigurationVersion
+        updateState(CredentialProvider.OPENAI) { it.copy(saveState = SaveState.Saving) }
+        viewModelScope.launch {
+            mutationMutex.withLock {
+                try {
+                    withContext(ioDispatcher) {
+                        cancelActiveProviderJobs(CredentialProvider.OPENAI)
+                        credentialStore.deleteCredential(CredentialProvider.OPENAI)
+                    }
+                    val draftUnchanged = openAiConfigurationVersion == version
+                    invalidateOpenAiRequests()
+                    updateState(CredentialProvider.OPENAI) { ProviderCredentialState() }
+                    if (draftUnchanged) {
+                        _openAiCredentialDraft.value = ""
+                    }
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    refreshStoredConfiguration(CredentialProvider.OPENAI)
+                    if (openAiConfigurationVersion == version) {
+                        showOpenAiCredentialError(error.message ?: "No se pudo eliminar la credencial")
+                    } else {
+                        updateState(CredentialProvider.OPENAI) { it.copy(saveState = SaveState.Idle) }
+                    }
+                }
             }
         }
     }
@@ -275,28 +271,21 @@ class ProfileViewModel(
         }
     }
 
-    private suspend fun refreshStoredConfiguration(provider: CredentialProvider) {
-        val configured = withContext(ioDispatcher) {
-            runCatching { credentialStore.hasCredential(provider) }
-        }
-        configured.onSuccess { value -> updateState(provider) { it.copy(isConfigured = value) } }
-        if (provider == CredentialProvider.CUSTOM_API) {
-            val configuration = withContext(ioDispatcher) {
-                runCatching { customApiConfigurationStore.getConfiguration() }
-            }
-            configuration.onSuccess { _customApiConfiguration.value = it }
+    // Una respuesta solo puede actualizar la configuracion que la solicito.
+    private fun invalidateOpenAiRequests() {
+        openAiConfigurationVersion++
+        updateState(CredentialProvider.OPENAI) {
+            it.copy(
+                isValidating = false, validationMessage = null, validationSucceeded = null,
+                saveState = if (it.saveState is SaveState.Saving) it.saveState else SaveState.Idle
+            )
         }
     }
 
-    private suspend fun cancelActiveProviderJobs(provider: CredentialProvider) {
-        val prefix = when (provider) {
-            CredentialProvider.OPENAI -> "openai"
-            CredentialProvider.CUSTOM_API -> CustomApiConfiguration.CUSTOM_PROVIDER_PREFIX
+    private fun showOpenAiCredentialError(message: String) {
+        updateState(CredentialProvider.OPENAI) {
+            it.copy(validationMessage = message, validationSucceeded = false, saveState = SaveState.Error(message))
         }
-        cancelJobs.execute(
-            analysisQueueRepository.getActiveJobsForProviderPrefix(prefix).map { it.jobId },
-            "La configuracion del proveedor ha cambiado"
-        )
     }
 
     private suspend fun replaceCustomDestination(
@@ -346,21 +335,34 @@ class ProfileViewModel(
         }
     }
 
-    // Una respuesta solo puede actualizar la configuracion que la solicito.
-    private fun invalidateRequests(provider: CredentialProvider) {
-        configurationVersions[provider] = (configurationVersions[provider] ?: 0L) + 1
-        updateState(provider) {
-            it.copy(
-                isValidating = false, validationMessage = null, validationSucceeded = null,
-                saveState = if (it.saveState is SaveState.Saving) it.saveState else SaveState.Idle
-            )
+    private fun CustomApiConfiguration?.toDraft() = CustomApiDraft(
+        displayName = this?.displayName.orEmpty(),
+        endpointUrl = this?.endpointUrl.orEmpty(),
+        modelId = this?.modelId.orEmpty()
+    )
+
+    private suspend fun refreshStoredConfiguration(provider: CredentialProvider) {
+        val configured = withContext(ioDispatcher) {
+            runCatching { credentialStore.hasCredential(provider) }
+        }
+        configured.onSuccess { value -> updateState(provider) { it.copy(isConfigured = value) } }
+        if (provider == CredentialProvider.CUSTOM_API) {
+            val configuration = withContext(ioDispatcher) {
+                runCatching { customApiConfigurationStore.getConfiguration() }
+            }
+            configuration.onSuccess { _customApiConfiguration.value = it }
         }
     }
 
-    private fun showCredentialError(provider: CredentialProvider, message: String) {
-        updateState(provider) {
-            it.copy(validationMessage = message, validationSucceeded = false, saveState = SaveState.Error(message))
+    private suspend fun cancelActiveProviderJobs(provider: CredentialProvider) {
+        val prefix = when (provider) {
+            CredentialProvider.OPENAI -> "openai"
+            CredentialProvider.CUSTOM_API -> CustomApiConfiguration.CUSTOM_PROVIDER_PREFIX
         }
+        cancelJobs.execute(
+            analysisQueueRepository.getActiveJobsForProviderPrefix(prefix).map { it.jobId },
+            "La configuracion del proveedor ha cambiado"
+        )
     }
 
     private fun initialStates(): Map<CredentialProvider, ProviderCredentialState> =
@@ -375,12 +377,6 @@ class ProfileViewModel(
         val current = _providerStates.value[provider] ?: ProviderCredentialState()
         _providerStates.value = _providerStates.value + (provider to transform(current))
     }
-
-    private fun CustomApiConfiguration?.toDraft() = CustomApiDraft(
-        displayName = this?.displayName.orEmpty(),
-        endpointUrl = this?.endpointUrl.orEmpty(),
-        modelId = this?.modelId.orEmpty()
-    )
 }
 
 class ProfileViewModelFactory(

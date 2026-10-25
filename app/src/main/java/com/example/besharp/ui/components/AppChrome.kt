@@ -44,7 +44,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -288,7 +287,6 @@ fun BeSharpBottomBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = 56.dp, max = 72.dp)
-                .testTag("besharp-bottom-bar-content")
                 .selectableGroup()
                 .padding(horizontal = 12.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically

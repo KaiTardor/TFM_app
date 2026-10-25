@@ -38,7 +38,6 @@ class CustomApiAnalysisProvider(
         } catch (exception: ResponseTooLargeException) {
             throw AnalysisProviderException(
                 "La API personalizada devolvio una respuesta demasiado grande",
-                providerName = descriptor.displayName,
                 category = AnalysisErrorCategory.RESPONSE_TOO_LARGE,
                 cause = exception
             )

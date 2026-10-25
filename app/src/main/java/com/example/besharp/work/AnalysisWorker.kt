@@ -189,7 +189,7 @@ class AnalysisWorker(
                     context = applicationContext,
                     assessmentId = completed.assessmentId,
                     imageName = completed.imageDisplayName,
-                    resolution = completed.assessment.resolution,
+                    resolution = completed.resolution,
                     hasExecutionErrors = completed.hasExecutionErrors
                 )
             }

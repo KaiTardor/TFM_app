@@ -27,7 +27,6 @@ class OpenAiProvenanceProvider(
         if (apiKey.isBlank()) {
             throw AnalysisProviderException(
                 message = "Configura una API key de OpenAI",
-                providerName = descriptor.displayName,
                 category = AnalysisErrorCategory.CONFIGURATION
             )
         }
@@ -53,7 +52,6 @@ class OpenAiProvenanceProvider(
         } catch (exception: ResponseTooLargeException) {
             throw AnalysisProviderException(
                 message = "OpenAI Provenance devolvio una respuesta demasiado grande",
-                providerName = descriptor.displayName,
                 category = AnalysisErrorCategory.RESPONSE_TOO_LARGE,
                 cause = exception
             )
@@ -153,7 +151,6 @@ class OpenAiProvenanceProvider(
         }
         return AnalysisProviderException(
             message = "OpenAI Provenance devolvio un error HTTP ${response.statusCode}",
-            providerName = descriptor.displayName,
             category = category,
             httpStatus = response.statusCode,
             retryAfterMillis = response.header("Retry-After")?.let(::parseRetryAfterMillis)
@@ -163,7 +160,6 @@ class OpenAiProvenanceProvider(
     private fun invalidResponse(message: String) =
         AnalysisProviderException(
             message = message,
-            providerName = descriptor.displayName,
             category = AnalysisErrorCategory.INVALID_RESPONSE
         )
 

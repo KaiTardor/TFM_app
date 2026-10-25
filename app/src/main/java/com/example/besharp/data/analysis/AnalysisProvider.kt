@@ -34,7 +34,6 @@ internal fun providerHttpError(
     }
     return AnalysisProviderException(
         message = message,
-        providerName = providerName,
         category = category,
         httpStatus = status
     )
@@ -58,7 +57,6 @@ internal fun openAiHttpError(
     }
     return AnalysisProviderException(
         message = "$providerName devolvio un error HTTP ${response.statusCode}",
-        providerName = providerName,
         category = category,
         httpStatus = response.statusCode
     )

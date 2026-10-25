@@ -16,12 +16,6 @@ internal fun JsonObject.stringOrNull(name: String, limit: Int = 500): String? {
     return text.takeIf { it.isNotEmpty() }
 }
 
-internal fun JsonObject.objectOrNull(name: String): JsonObject? {
-    val value = get(name)?.takeUnless { it.isJsonNull } ?: return null
-    if (!value.isJsonObject) throw AnalysisProviderException("El campo $name debe ser un objeto")
-    return value.asJsonObject
-}
-
 internal fun JsonObject.arrayOrNull(name: String): JsonArray? {
     val value = get(name)?.takeUnless { it.isJsonNull } ?: return null
     if (!value.isJsonArray) throw AnalysisProviderException("El campo $name debe ser una lista")

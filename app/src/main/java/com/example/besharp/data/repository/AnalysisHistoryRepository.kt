@@ -47,42 +47,36 @@ class AnalysisHistoryRepository(
 
     private fun toHistoryEntry(row: AnalysisJobWithResult): AnalysisHistoryEntry {
         val job = row.job
-        val resultEntity = row.result
-        val descriptor = resultEntity?.let {
-            ProviderDescriptor(
-                providerId = job.providerId,
-                displayName = job.providerName,
-                modelId = job.modelId,
-                evidenceType = enumValueOrDefault(it.evidenceType, EvidenceType.VISUAL_ESTIMATE),
-                isRemote = enumValueOrDefault(it.origin, AnalysisOrigin.DIRECT_PROVIDER) !=
-                    AnalysisOrigin.LOCAL_ANALYSIS,
-                capability = enumValueOrDefault(job.capability, AnalysisCapability.VISUAL_ANALYSIS),
-                inputType = enumValueOrDefault(job.inputType, AnalysisInputType.NORMALIZED_IMAGE)
-            )
-        }
         return AnalysisHistoryEntry(
             jobId = job.jobId,
             providerName = job.providerName,
             status = job.status,
             errorMessage = job.errorMessage,
-            result = if (resultEntity != null && descriptor != null) {
+            result = row.result?.let { result ->
+                val origin = enumValueOrDefault(result.origin, AnalysisOrigin.DIRECT_PROVIDER)
                 AuthenticityResult(
-                    provider = descriptor,
-                    verdict = enumValueOrDefault(resultEntity.verdict, AnalysisVerdict.INCONCLUSIVE),
-                    syntheticProbability = resultEntity.syntheticProbability,
-                    summary = resultEntity.summary,
-                    indicators = parseStringList(resultEntity.indicatorsJson),
-                    analyzedAt = resultEntity.analyzedAt,
-                    durationMillis = resultEntity.durationMillis,
-                    origin = enumValueOrDefault(resultEntity.origin, AnalysisOrigin.DIRECT_PROVIDER),
+                    provider = ProviderDescriptor(
+                        providerId = job.providerId,
+                        displayName = job.providerName,
+                        modelId = job.modelId,
+                        evidenceType = enumValueOrDefault(result.evidenceType, EvidenceType.VISUAL_ESTIMATE),
+                        isRemote = origin != AnalysisOrigin.LOCAL_ANALYSIS,
+                        capability = enumValueOrDefault(job.capability, AnalysisCapability.VISUAL_ANALYSIS),
+                        inputType = enumValueOrDefault(job.inputType, AnalysisInputType.NORMALIZED_IMAGE)
+                    ),
+                    verdict = enumValueOrDefault(result.verdict, AnalysisVerdict.INCONCLUSIVE),
+                    syntheticProbability = result.syntheticProbability,
+                    summary = result.summary,
+                    indicators = parseStringList(result.indicatorsJson),
+                    analyzedAt = result.analyzedAt,
+                    durationMillis = result.durationMillis,
+                    origin = origin,
                     verificationLevel = enumValueOrDefault(
-                        resultEntity.verificationLevel,
+                        result.verificationLevel,
                         VerificationLevel.VISUAL_ESTIMATE
                     ),
                     evidenceSignals = row.signals.map(EvidenceSignalEntity::toDomain)
                 )
-            } else {
-                null
             }
         )
     }

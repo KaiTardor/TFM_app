@@ -77,7 +77,6 @@ class ResolutionEngine(
 
         val totalTerminalJobs = input.completedJobCount + input.failedJobCount + input.cancelledJobCount
         val reason = when {
-            input.timedOut -> "La evaluacion termino por tiempo de espera sin evidencia concluyente."
             input.failedJobCount > 0 -> "Los analizadores disponibles fallaron o no devolvieron evidencia util."
             totalTerminalJobs == 0 -> "La evaluacion no contiene resultados."
             else -> "Los resultados disponibles son inconclusos."

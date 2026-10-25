@@ -326,23 +326,21 @@ private fun SelectedDayPhotoSection(
 ) {
     Box(modifier = modifier.fillMaxWidth()) {
         when {
-            selectedDate == null -> Box(
+            selectedDate == null || photosForSelectedDate.isNullOrEmpty() -> Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
                     .nestedScroll(gridNestedScrollConnection),
                 contentAlignment = Alignment.Center
             ) {
-                CenterMessage(stringResource(R.string.gallery_select_day))
-            }
-            photosForSelectedDate.isNullOrEmpty() -> Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .nestedScroll(gridNestedScrollConnection),
-                contentAlignment = Alignment.Center
-            ) {
-                CenterMessage(stringResource(R.string.gallery_no_photos_on_day, selectedDate.dayOfMonth))
+                Text(
+                    text = if (selectedDate == null) {
+                        stringResource(R.string.gallery_select_day)
+                    } else {
+                        stringResource(R.string.gallery_no_photos_on_day, selectedDate.dayOfMonth)
+                    },
+                    color = MaterialTheme.colorScheme.onBackground
+                )
             }
             else -> LazyVerticalGrid(
                 state = photoGridState,
@@ -362,13 +360,6 @@ private fun SelectedDayPhotoSection(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun CenterMessage(text: String) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(text = text, color = MaterialTheme.colorScheme.onBackground)
     }
 }
 

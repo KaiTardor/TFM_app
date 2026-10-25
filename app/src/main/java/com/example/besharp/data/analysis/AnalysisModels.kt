@@ -62,7 +62,6 @@ enum class AnalysisErrorCategory {
 
 class AnalysisProviderException(
     message: String,
-    val providerName: String? = null,
     val category: AnalysisErrorCategory = AnalysisErrorCategory.INVALID_RESPONSE,
     val httpStatus: Int? = null,
     val retryAfterMillis: Long? = null,
