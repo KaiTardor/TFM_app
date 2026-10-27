@@ -58,6 +58,7 @@ interface AnalysisQueueDao {
     )
     suspend fun activatePreparedAssessment(assessmentId: Long): Int
 
+    // Crea la evaluacion y todos sus trabajos en una sola transaccion, sin dejar lotes incompletos.
     @Transaction
     suspend fun createAssessmentWithJobs(
         assessment: ImageAssessmentEntity,
@@ -113,6 +114,7 @@ interface AnalysisQueueDao {
     )
     suspend fun getReadyAssessmentIds(): List<Long>
 
+    // Solo una ejecucion puede cerrar la evaluacion, y todos sus trabajos deben haber terminado.
     @Query(
         """
         UPDATE image_assessments
@@ -228,6 +230,7 @@ interface AnalysisQueueDao {
     )
     suspend fun cancelAllActive(completedAt: Long, message: String): Int
 
+    // Guarda estado, resultado y senales juntos; una cancelacion previa impide guardar resultados tardios.
     @Transaction
     suspend fun saveSuccessfulResult(
         jobId: Long,
@@ -261,6 +264,7 @@ interface AnalysisQueueDao {
     @Query("DELETE FROM image_assessments WHERE imageUri = :imageUri")
     suspend fun deleteForImage(imageUri: String)
 
+    // Exige que el resultado elegido aun exista para que una decision tardia no borre ambos resultados.
     @Query(
         """
         DELETE FROM image_assessments

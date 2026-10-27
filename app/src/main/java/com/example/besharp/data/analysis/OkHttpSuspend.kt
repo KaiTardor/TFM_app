@@ -21,6 +21,7 @@ internal data class BoundedHttpResponse(
 
 internal class ResponseTooLargeException : IOException("HTTP response exceeds the allowed size")
 
+// Cancelar la corrutina cancela la llamada; use cierra la respuesta incluso si falla la lectura.
 internal suspend fun Call.awaitBoundedResponse(
     maxBytes: Int = MAX_HTTP_RESPONSE_BYTES
 ): BoundedHttpResponse = suspendCancellableCoroutine { continuation ->
@@ -53,6 +54,7 @@ internal suspend fun Call.awaitBoundedResponse(
     })
 }
 
+// Lee un byte extra para detectar excesos aunque Content-Length falte o sea incorrecto.
 private fun java.io.InputStream.readAtMost(maxBytes: Int): ByteArray {
     val output = ByteArrayOutputStream(minOf(maxBytes, DEFAULT_BUFFER_SIZE))
     val buffer = ByteArray(DEFAULT_BUFFER_SIZE)

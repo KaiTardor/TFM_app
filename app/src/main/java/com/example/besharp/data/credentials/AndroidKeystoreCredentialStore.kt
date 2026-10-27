@@ -49,6 +49,7 @@ class AndroidKeystoreCredentialStore(context: Context) : ProviderCredentialStore
         }
     }
 
+    // Cifra con un IV nuevo y vincula el secreto al proveedor para impedir intercambiar credenciales.
     @Synchronized
     override fun saveCredential(provider: CredentialProvider, credential: String) {
         val normalizedCredential = credential.trim()

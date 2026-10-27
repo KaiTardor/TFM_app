@@ -57,6 +57,7 @@ class RemoteAnalysisConsentStore(context: Context) : RemoteConsentStore {
     override fun hasConsentFor(target: RemoteConsentTarget): Boolean =
         hasConsentFor(setOf(target))
 
+    // Confirma la escritura de destinos y version antes de dar el consentimiento por guardado.
     override fun accept(targets: Set<RemoteConsentTarget>): RemoteConsentRecord {
         require(targets.isNotEmpty()) { "El consentimiento debe incluir al menos un destino" }
         val record = RemoteConsentRecord(

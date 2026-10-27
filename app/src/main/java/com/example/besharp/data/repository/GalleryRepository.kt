@@ -28,6 +28,7 @@ class GalleryRepository(
         it?.toDomain()
     }
 
+    // Con acceso parcial oculta fotos no autorizadas, sin tratarlas como eliminadas del dispositivo.
     suspend fun synchronize(partialAccess: Boolean, onProgress: (Float) -> Unit = {}) {
         recoverCaptures()
         val localImages = MediaStoreHelper.getAllImages(context)
@@ -64,6 +65,7 @@ class GalleryRepository(
         photoDao.synchronize(synchronized, deletedIds, partialAccess)
     }
 
+    // Registra la foto antes de retirar sus marcadores y evita solaparse con la recuperacion automatica.
     suspend fun insertCapturedPhoto(uri: String, fileName: String) = captureRegistrationMutex.withLock {
         val file = File(context.filesDir, "photos/$fileName")
         check(!File(file.parentFile, "${file.name}.cancelled").exists()) {

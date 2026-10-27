@@ -195,6 +195,7 @@ class AnalysisPreparationViewModel(
         }
     }
 
+    // Descarta lecturas pendientes si un envio ha invalidado la seleccion, aunque ya haya terminado.
     internal fun addImages(resolveImages: suspend () -> List<SelectedAnalysisImage>) {
         if (_uiState.value.isRunning) return
         val generation = imageSelectionGeneration
@@ -209,7 +210,6 @@ class AnalysisPreparationViewModel(
                 }
                 return@launch
             }
-            // Un envio invalida las lecturas pendientes, incluso si ya termino.
             if (generation != imageSelectionGeneration || _uiState.value.isRunning) return@launch
             _uiState.value = _uiState.value.copy(
                 images = (_uiState.value.images + newImages).distinctBy { it.uri }.take(MAX_IMAGES),
@@ -252,6 +252,7 @@ class AnalysisPreparationViewModel(
         }
     }
 
+    // Retira solo URI inaccesibles de la seleccion vigente, sin restaurar una lista antigua.
     internal fun validateRestoredImages(isReadable: suspend (SelectedAnalysisImage) -> Boolean) {
         val images = _uiState.value.images
         if (images.isEmpty() || !restoredImagesValidated.compareAndSet(false, true)) return
@@ -261,7 +262,6 @@ class AnalysisPreparationViewModel(
                 images.filterNot { isReadable(it) }.mapTo(mutableSetOf()) { it.uri }
             }
             if (generation != imageSelectionGeneration || _uiState.value.isRunning) return@launch
-            // Solo retiramos URI invalidas; no restauramos una lista antigua.
             val current = _uiState.value
             val valid = current.images.filterNot { it.uri in invalidUris }
             if (valid != current.images) {
@@ -312,9 +312,9 @@ class AnalysisPreparationViewModel(
         return RemoteConsentPreview(names, targets)
     }
 
+    // Autoriza solo los destinos mostrados y comprueba que la seleccion siga coincidiendo.
     suspend fun acceptRemoteConsent(preview: RemoteConsentPreview): Boolean {
         return try {
-            // Solo autorizamos los destinos que se han mostrado en el dialogo.
             check(preview.targets.isNotEmpty() && preview.targets == selectedConsentPreview().targets)
             withContext(ioDispatcher) { consentStore.accept(preview.targets) }
             _remoteConsentAccepted.value = true
@@ -327,6 +327,7 @@ class AnalysisPreparationViewModel(
         }
     }
 
+    // Persiste la revocacion y cancela trabajos remotos sin depender del ciclo de vida del ViewModel.
     suspend fun revokeRemoteConsent(): Boolean = withContext(NonCancellable) {
         if (!cancellationInProgress.compareAndSet(false, true)) return@withContext false
         // Si no se puede persistir la revocacion, no anunciamos que se ha aplicado.
@@ -345,7 +346,6 @@ class AnalysisPreparationViewModel(
             } catch (exception: Exception) {
                 failure = exception
             } finally {
-                // Esta operacion no depende del ciclo de vida del ViewModel.
                 try {
                     workScheduler.cancelAllRemote()
                 } catch (exception: Exception) {
@@ -362,6 +362,7 @@ class AnalysisPreparationViewModel(
         true
     }
 
+    // Registra el lote completo antes de arrancarlo y limpia lo preparado si falla o se cancela.
     fun analyze() {
         val snapshot = _uiState.value
         if (snapshot.images.isEmpty() || snapshot.selectedModelIds.isEmpty() || snapshot.isRunning ||
@@ -389,7 +390,6 @@ class AnalysisPreparationViewModel(
                             }
                         )
                     }
-                    // Registramos todos los trabajos antes de arrancar el primer Worker.
                     queueAnalysisBatch.execute(
                         images = snapshot.images.map { AnalysisBatchImage(it.uri, it.displayName) },
                         requests = requests,
@@ -430,6 +430,7 @@ class AnalysisPreparationViewModel(
         }
     }
 
+    // Senala la cancelacion antes de limpiar para detener tambien la preparacion del lote en curso.
     fun cancelAnalysis() {
         batchCancellationRequested.set(true)
         val startsCleanup = cancellationInProgress.compareAndSet(false, true)

@@ -88,6 +88,7 @@ class CustomApiAnalysisProvider(
         }
     }
 
+    // Limita las listas recibidas y rechaza IDs repetidos entre las senales conservadas.
     private fun parseResponseObject(rawBody: String): CustomApiParsedResult {
         val json = try {
             JsonParser.parseString(rawBody).asJsonObject
@@ -149,6 +150,7 @@ class CustomApiAnalysisProvider(
             VerificationLevel.VISUAL_ESTIMATE
         }
 
+    // La procedencia declarada por la API queda como PROVIDER_REPORTED, no verificada localmente.
     private fun parseEvidenceSignal(json: JsonObject, index: Int): EvidenceSignal {
         val type = parseEnum<EvidenceType>(json.stringOrNull("type"), "tipo de señal")
         val outcome = parseEnum<EvidenceOutcome>(json.stringOrNull("outcome"), "estado de señal")

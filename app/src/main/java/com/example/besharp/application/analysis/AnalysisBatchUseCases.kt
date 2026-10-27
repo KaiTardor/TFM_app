@@ -23,6 +23,7 @@ class QueueAnalysisBatchUseCase(
     private val repository: AnalysisQueueRepository,
     private val scheduler: AnalysisScheduler
 ) {
+    // Guarda todos los trabajos del lote antes de programar el primer Worker.
     suspend fun execute(
         images: List<AnalysisBatchImage>,
         requests: List<AnalysisJobRequest>,
@@ -55,6 +56,7 @@ class CancelAnalysisJobsUseCase(
     private val repository: AnalysisQueueRepository,
     private val scheduler: AnalysisScheduler
 ) {
+    // Intenta cancelar cada trabajo en Room y WorkManager antes de comunicar fallos parciales.
     suspend fun execute(jobIds: Collection<Long>, reason: String) {
         var failure: Exception? = null
         jobIds.forEach { jobId ->
@@ -89,7 +91,7 @@ class ReconcileAnalysisJobsUseCase(
     private val scheduler: AnalysisScheduler,
     private val consentStore: RemoteConsentStore
 ) {
-    // Solo devolvemos si termino sin errores; el historial se observa desde Room.
+    // Reconcilia Room con WorkManager sin reenviar trabajos cuyo historial se ha perdido.
     suspend fun execute(): Boolean {
         repository.finalizeReadyAssessments()
         var completedWithoutErrors = true
@@ -111,8 +113,7 @@ class ReconcileAnalysisJobsUseCase(
                     return@forEach
                 }
                 if (state == AnalysisWorkState.ACTIVE) return@forEach
-                // La ausencia no distingue un trabajo sin programar de un historial podado.
-                // No reabrimos una ejecucion cuyo numero de intentos ya no conocemos.
+                // Sin historial no sabemos si llego a ejecutarse ni cuantos intentos consumio.
                 repository.markCancelled(
                     job.jobId,
                     "No se conserva el historial del trabajo; no se ha reenviado automaticamente"

@@ -16,6 +16,7 @@ object AnalysisTemporaryFiles {
     const val ORIGINAL_DIRECTORY = "besharp-originals"
     const val PREPROCESSING_DIRECTORY = "besharp-preprocessing"
 
+    // Limpia una sola vez por proceso para no borrar copias creadas por otros analisis activos.
     suspend fun ensureCleaned(context: Context) = initialization.withLock {
         if (cleaned) return@withLock
         withContext(Dispatchers.IO) { cleanupOnProcessStart(context) }

@@ -37,6 +37,7 @@ object AnalysisImagePreprocessor {
     private const val CACHE_DIRECTORY = AnalysisTemporaryFiles.NORMALIZED_DIRECTORY
     private val cacheLocks = ConcurrentHashMap<Long, Mutex>()
 
+    // Serializa por evaluacion para reutilizar el mismo JPEG sin regenerarlo en cada intento.
     suspend fun prepareCached(context: Context, assessmentId: Long, uri: Uri): AnalysisInput = withContext(Dispatchers.IO) {
         AnalysisTemporaryFiles.ensureCleaned(context)
         require(assessmentId > 0) { "La evaluacion no es valida" }
@@ -189,6 +190,7 @@ object AnalysisImagePreprocessor {
         }
     }
 
+    // El fallback ImageDecoder ya aplica EXIF; se indica para no repetir la orientacion.
     private fun decodeImage(
         sourceFile: File,
         bounds: BitmapFactory.Options

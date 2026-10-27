@@ -13,6 +13,7 @@ import java.io.IOException
 import java.io.FileNotFoundException
 
 object OriginalMediaPreparer {
+    // Comprueba tambien los bytes copiados porque el tamano declarado puede ser desconocido.
     suspend fun prepare(
         context: Context,
         uri: Uri,

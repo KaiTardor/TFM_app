@@ -84,6 +84,7 @@ class ProfileViewModel(
         _openAiCredentialDraft.value = credential
     }
 
+    // Conserva las ediciones nuevas si termina de guardarse un borrador anterior.
     fun saveOpenAiCredential() {
         if (_providerStates.value[CredentialProvider.OPENAI]?.saveState is SaveState.Saving) return
         val credential = _openAiCredentialDraft.value
@@ -103,7 +104,6 @@ class ProfileViewModel(
                             credentialStore.saveCredential(CredentialProvider.OPENAI, credential)
                         }
                     }
-                    // No borramos cambios escritos mientras se guardaba el borrador anterior.
                     val draftUnchanged = openAiConfigurationVersion == version
                     invalidateOpenAiRequests()
                     if (draftUnchanged) {
@@ -132,6 +132,7 @@ class ProfileViewModel(
         }
     }
 
+    // Descarta resultados de conexion si la credencial o su borrador han cambiado durante la consulta.
     fun validateOpenAiCredential() {
         if (_providerStates.value[CredentialProvider.OPENAI]?.isConfigured != true) return
         if (_providerStates.value[CredentialProvider.OPENAI]?.isValidating == true ||
@@ -205,6 +206,7 @@ class ProfileViewModel(
         if (_customApiSaveState.value !is SaveState.Saving) _customApiSaveState.value = SaveState.Idle
     }
 
+    // Guarda una instantanea sin sobrescribir ediciones posteriores ni publicar errores obsoletos.
     fun saveCustomApiConfiguration() {
         if (_customApiSaveState.value is SaveState.Saving) return
         val draft = _customApiDraft.value
@@ -288,6 +290,7 @@ class ProfileViewModel(
         }
     }
 
+    // Retira el token anterior antes de publicar otro destino para no exponerlo al nuevo servidor.
     private suspend fun replaceCustomDestination(
         configuration: CustomApiConfiguration,
         accessToken: String
@@ -309,7 +312,6 @@ class ProfileViewModel(
 
             try {
                 if (destinationChanged) {
-                    // El destino nuevo nunca llega a observar el token perteneciente al anterior.
                     credentialStore.deleteCredential(CredentialProvider.CUSTOM_API)
                 }
                 customApiConfigurationStore.saveConfiguration(configuration)

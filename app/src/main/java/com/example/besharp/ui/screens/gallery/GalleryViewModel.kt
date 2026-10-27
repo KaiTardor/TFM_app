@@ -181,6 +181,7 @@ class GalleryViewModel(
 
     fun observePhoto(photoId: Long) = galleryRepository.observePhoto(photoId)
 
+    // Invalida la sincronizacion previa cuando cambian los permisos para no reutilizar otro alcance.
     fun updatePhotoAccess(fullAccess: Boolean, partialAccess: Boolean, canRequestAgain: Boolean) {
         val access = when {
             fullAccess -> GalleryAccess.Granted(partial = false)
@@ -188,7 +189,6 @@ class GalleryViewModel(
             else -> GalleryAccess.Denied(canRequestAgain)
         }
         if (access != _galleryAccess.value) {
-            // No reutilizamos una sincronizacion iniciada con otros permisos.
             syncJob?.cancel()
             syncRequired = true
             _syncError.value = null
@@ -207,6 +207,7 @@ class GalleryViewModel(
         }
     }
 
+    // Espera la limpieza previa y conserva el alcance de permisos vigente al iniciar la sincronizacion.
     fun syncMediaStore(force: Boolean = false) {
         val access = _galleryAccess.value as? GalleryAccess.Granted ?: return
         if (syncJob?.isActive == true) return
@@ -215,7 +216,6 @@ class GalleryViewModel(
 
         val previousSync = syncJob
         syncJob = viewModelScope.launch {
-            // Esperamos su limpieza antes de publicar el estado de la nueva tarea.
             previousSync?.join()
             if (_galleryAccess.value != access) return@launch
             _syncError.value = null

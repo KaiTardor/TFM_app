@@ -93,6 +93,7 @@ class OpenAiProvenanceProvider(
         }
     }
 
+    // Rechaza tipos y estados desconocidos y genera IDs por indice para distinguir cada resultado.
     private fun parseResultObject(root: JsonObject): List<EvidenceSignal> {
         if (root.stringOrNull("object") != "content_provenance_check") {
             throw invalidResponse("OpenAI Provenance devolvio un objeto inesperado")

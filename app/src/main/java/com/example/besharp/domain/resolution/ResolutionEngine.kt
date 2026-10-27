@@ -7,6 +7,7 @@ import com.example.besharp.domain.model.*
 class ResolutionEngine(
     private val policy: ResolutionPolicy = ResolutionPolicy()
 ) {
+    // Una estimacion visual o senal reportada no basta para confirmar generacion con IA.
     fun resolve(input: ResolutionInput): FinalAssessment {
         val syntheticSignals = input.evidenceSignals.filter(::isConfirmingSyntheticSignal)
         val captureSignals = input.evidenceSignals.filter(::isTrustedCaptureSignal)
@@ -90,6 +91,7 @@ class ResolutionEngine(
         )
     }
 
+    // C2PA debe estar validado y declarar uso de IA; la firma por si sola no confirma generacion.
     private fun isConfirmingSyntheticSignal(signal: EvidenceSignal): Boolean {
         if (signal.outcome != EvidenceOutcome.DETECTED) return false
         return when (signal.type) {

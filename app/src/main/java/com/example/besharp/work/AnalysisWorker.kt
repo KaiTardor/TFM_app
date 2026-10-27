@@ -44,6 +44,7 @@ class AnalysisWorker(
         }
     }
 
+    // Un RUNNING recuperado no se reenvia: puede haber llegado al proveedor antes de la interrupcion.
     private suspend fun execute(): Result {
         val jobId = inputData.getLong(KEY_JOB_ID, -1L)
         if (jobId <= 0) return Result.failure()
@@ -58,7 +59,6 @@ class AnalysisWorker(
             return Result.success()
         }
         if (job.status == AnalysisJobStatus.RUNNING) {
-            // Un RUNNING restaurado puede haber enviado ya la peticion; no lo reenviamos.
             repository.markCancelled(jobId, "Ejecucion interrumpida; no se ha reenviado automaticamente")
             repository.finalizeAssessmentIfReady(job.assessmentId)?.let { notifyCompletion(it) }
             return Result.success()
@@ -154,6 +154,7 @@ class AnalysisWorker(
         return Result.success()
     }
 
+    // Revalida el estado y el consentimiento tras la espera y la preparacion, antes del envio remoto.
     private suspend fun maySend(jobId: Long): Boolean {
         currentCoroutineContext().ensureActive()
         val container = (applicationContext as BeSharpApplication).container

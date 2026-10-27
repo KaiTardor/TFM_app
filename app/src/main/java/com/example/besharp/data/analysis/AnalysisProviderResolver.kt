@@ -54,6 +54,7 @@ class AnalysisProviderResolver(
         return CustomApiAnalysisProvider(configuration, customCredential(configuration.destinationFingerprint()))
     }
 
+    // Verifica el destino antes y despues de leer el token para no usarlo con otra configuracion.
     private fun customCredential(fingerprint: String): String? = synchronized(customApiConfigurationStore) {
         check(customApiConfigurationStore.getConfiguration()?.destinationFingerprint() == fingerprint) {
             "El destino custom ha cambiado"

@@ -72,6 +72,7 @@ class AnalysisQueueRepository(
         dao.getActiveJobsForProviderPrefix(providerPrefix)
             .mapNotNull { entity -> toExecutionJob(entity) }
 
+    // Fija la configuracion y una identidad de ejecucion por proveedor para los futuros Workers.
     suspend fun enqueueAssessment(
         imageUri: String,
         imageDisplayName: String,
@@ -177,6 +178,7 @@ class AnalysisQueueRepository(
         finalizeReadyAssessments()
     }
 
+    // Resuelve solo evaluaciones completas y limpia su cache si esta ejecucion consigue cerrarlas.
     suspend fun finalizeAssessmentIfReady(assessmentId: Long): CompletedAssessment? {
         val assessment = dao.getAssessment(assessmentId) ?: return null
         if (assessment.status != com.example.besharp.data.local.entity.ImageAssessmentStatus.ACTIVE) return null
@@ -248,6 +250,7 @@ class AnalysisQueueRepository(
         return AnalysisExecutionJob(entity, assessment.imageUri, assessment.imageDisplayName)
     }
 
+    // Genera mensajes locales sin guardar textos libres de errores o respuestas remotas.
     private fun controlledFailureMessage(
         providerId: String,
         category: AnalysisErrorCategory,

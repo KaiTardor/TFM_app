@@ -5,11 +5,11 @@ package com.example.besharp.data.local
 import java.io.File
 import kotlinx.coroutines.CancellationException
 
+// Reserva un archivo unico y su marcador pending antes de abrir la camara externa.
 internal fun createCapturedPhotoFile(directory: File): File {
     check(directory.isDirectory || directory.mkdirs()) {
         "No se pudo crear el directorio de fotos"
     }
-    // Cada captura reserva su archivo; dos capturas no comparten nombre.
     val file = File.createTempFile("BESHARP_", ".jpg", directory)
     try {
         check(File(directory, "${file.name}.pending").createNewFile())
@@ -20,6 +20,7 @@ internal fun createCapturedPhotoFile(directory: File): File {
     }
 }
 
+// Marca para registro una captura con contenido que no haya sido descartada.
 internal fun markCaptureReady(file: File) {
     check(!File(file.parentFile, "${file.name}.cancelled").exists()) {
         "La captura ya esta descartada"
@@ -28,12 +29,12 @@ internal fun markCaptureReady(file: File) {
     markCapture(file, "ready")
 }
 
+// Persiste el descarte antes de borrar para poder reintentarlo tras una interrupcion.
 internal fun cancelCapturedPhoto(file: File) {
     check(!File(file.parentFile, "${file.name}.ready").exists() &&
         (File(file.parentFile, "${file.name}.pending").exists() ||
             File(file.parentFile, "${file.name}.cancelled").exists())
     ) { "La captura ya no esta pendiente" }
-    // Guardamos la decision antes de borrar para poder reintentarlo tras un cierre.
     markCapture(file, "cancelled")
     deleteCancelledCapture(file)
 }
@@ -45,8 +46,8 @@ private fun markCapture(file: File, state: String) {
     deleteCaptureMarker(file, "pending")
 }
 
+// Retira pending antes de ready para no ofrecer descartar una foto ya registrada si falla la limpieza.
 internal fun acknowledgeCapturedPhoto(file: File) {
-    // Retiramos pending antes de ready para no ofrecer descartar una foto ya registrada.
     deleteCaptureMarker(file, "pending")
     deleteCaptureMarker(file, "ready")
 }
@@ -82,6 +83,7 @@ internal fun listRecoverableCaptures(directory: File): List<RecoverableCapture> 
         }
 }
 
+// Recupera registros confirmados y descartes explicitos; las capturas sin respuesta se conservan.
 internal suspend fun recoverCapturedPhotos(directory: File, register: suspend (File) -> Unit) {
     var failure: Exception? = null
     listRecoverableCaptures(directory).forEach { capture ->
